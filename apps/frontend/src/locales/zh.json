@@ -1,0 +1,124 @@
+{
+  "common": {
+    "loading": "加载中...",
+    "save": "保存",
+    "cancel": "取消",
+    "delete": "删除",
+    "edit": "编辑",
+    "create": "创建",
+    "search": "搜索",
+    "filter": "筛选",
+    "all": "全部",
+    "yes": "是",
+    "no": "否",
+    "confirm": "确认",
+    "close": "关闭",
+    "clear": "清除",
+    "error": "错误",
+    "success": "成功"
+  },
+  "nav": {
+    "dashboard": "仪表板",
+    "statusBoard": "状态看板",
+    "admin": "管理"
+  },
+  "auth": {
+    "login": "登录",
+    "logout": "退出",
+    "email": "邮箱",
+    "password": "密码",
+    "forgotPassword": "忘记密码？",
+    "welcomeBack": "欢迎回来",
+    "signInToContinue": "登录以继续使用 UniSync"
+  },
+  "showset": {
+    "title": "展示组",
+    "id": "展示组 ID",
+    "area": "区域",
+    "scene": "场景",
+    "description": "描述",
+    "vmList": "VM 列表",
+    "stages": "阶段",
+    "links": "链接",
+    "modelUrl": "模型链接",
+    "drawingsUrl": "图纸链接",
+    "createNew": "创建展示组",
+    "details": "展示组详情",
+    "noShowSets": "未找到展示组",
+    "noLinks": "暂无链接",
+    "deleteConfirm": "确定要删除 {{id}} 吗？此操作无法撤销。"
+  },
+  "stages": {
+    "screen": "屏幕",
+    "structure": "结构",
+    "integrated": "集成",
+    "inBim360": "在 BIM360",
+    "drawing2d": "2D 图纸",
+    "short": {
+      "screen": "屏幕",
+      "structure": "结构",
+      "integrated": "集成",
+      "inBim360": "BIM",
+      "drawing2d": "2D图"
+    }
+  },
+  "status": {
+    "not_started": "未开始",
+    "in_progress": "进行中",
+    "complete": "已完成",
+    "on_hold": "暂停",
+    "client_review": "客户审核",
+    "engineer_review": "工程师审核"
+  },
+  "notes": {
+    "title": "备注",
+    "addNote": "添加备注",
+    "noNotes": "暂无备注",
+    "translating": "翻译中...",
+    "translationFailed": "翻译失败",
+    "viewOriginal": "查看原文"
+  },
+  "sessions": {
+    "title": "活动会话",
+    "startSession": "开始工作",
+    "endSession": "结束",
+    "activity": "活动",
+    "workingOn": "正在处理",
+    "noActiveSessions": "无活动会话",
+    "finishWork": "完成工作",
+    "stageCompleteQuestion": "{{stage}}阶段完成了吗？",
+    "finalStageCompleteQuestion": "{{stage}}阶段完成了吗？",
+    "nextStageReady": "这将标记为准备进入{{stage}}。",
+    "notYet": "还没有",
+    "yesComplete": "是的，完成"
+  },
+  "admin": {
+    "title": "管理",
+    "users": "用户",
+    "createUser": "创建用户",
+    "editUser": "编辑用户",
+    "role": "角色",
+    "status": "状态",
+    "active": "活跃",
+    "deactivated": "已停用"
+  },
+  "roles": {
+    "admin": "管理员",
+    "bim_coordinator": "BIM 协调员",
+    "3d_modeller": "3D 建模师",
+    "2d_drafter": "2D 制图员"
+  },
+  "areas": {
+    "311": "311 景点塔",
+    "312": "312 漫威广场"
+  },
+  "views": {
+    "table": "表格",
+    "kanban": "看板"
+  },
+  "errors": {
+    "loginFailed": "登录失败，请检查您的凭据。",
+    "sessionExpired": "会话已过期，请重新登录。",
+    "networkError": "网络错误，请重试。"
+  }
+}

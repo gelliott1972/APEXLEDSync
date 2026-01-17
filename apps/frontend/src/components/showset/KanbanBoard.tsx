@@ -1,0 +1,293 @@
+import { useTranslation } from 'react-i18next';
+import type { ShowSet, StageStatus, StageName } from '@unisync/shared-types';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+
+interface KanbanBoardProps {
+  showSets: ShowSet[];
+  onSelect: (id: string) => void;
+}
+
+const STAGES: StageName[] = ['screen', 'structure', 'integrated', 'inBim360', 'drawing2d'];
+
+// Column names include stages + completed
+type ColumnName = StageName | 'completed';
+const COLUMNS: ColumnName[] = ['screen', 'structure', 'integrated', 'inBim360', 'drawing2d', 'completed'];
+
+// Status display order within each stage
+const STATUS_ORDER: StageStatus[] = ['not_started', 'in_progress', 'engineer_review', 'client_review', 'complete', 'on_hold'];
+
+// Valid statuses per stage (for active items - not complete)
+// Note: Only Screen has 'not_started' - other stages start at 'in_progress'
+const STAGE_ACTIVE_STATUSES: Record<StageName, StageStatus[]> = {
+  screen: ['not_started', 'in_progress', 'on_hold'],
+  structure: ['in_progress', 'on_hold'],
+  integrated: ['in_progress', 'engineer_review', 'on_hold'],
+  inBim360: ['in_progress', 'client_review', 'on_hold'],
+  drawing2d: ['in_progress', 'engineer_review', 'client_review', 'on_hold'],
+};
+
+// Valid statuses to show per column (active + complete for stages, only complete for completed column)
+// Note: Only Screen has 'not_started' - other stages start at 'in_progress'
+const COLUMN_STATUSES: Record<ColumnName, StageStatus[]> = {
+  screen: ['not_started', 'in_progress', 'complete', 'on_hold'],
+  structure: ['in_progress', 'complete', 'on_hold'],
+  integrated: ['in_progress', 'engineer_review', 'complete', 'on_hold'],
+  inBim360: ['in_progress', 'client_review', 'complete', 'on_hold'],
+  drawing2d: ['in_progress', 'engineer_review', 'client_review', 'complete', 'on_hold'],
+  completed: ['complete'],
+};
+
+const columnColors: Record<ColumnName, string> = {
+  screen: 'border-t-sky-400',
+  structure: 'border-t-violet-400',
+  integrated: 'border-t-amber-400',
+  inBim360: 'border-t-teal-400',
+  drawing2d: 'border-t-rose-400',
+  completed: 'border-t-emerald-500',
+};
+
+const statusColors: Record<StageStatus, string> = {
+  not_started: 'bg-slate-500/20 text-slate-400',
+  in_progress: 'bg-orange-500/20 text-orange-400',
+  engineer_review: 'bg-purple-500/20 text-purple-400',
+  client_review: 'bg-blue-500/20 text-blue-400',
+  complete: 'bg-emerald-500/20 text-emerald-400',
+  on_hold: 'bg-red-500/20 text-red-400',
+};
+
+// Check if a ShowSet is fully complete (all stages done)
+function isFullyComplete(showSet: ShowSet): boolean {
+  return STAGES.every(stage => showSet.stages[stage].status === 'complete');
+}
+
+// Get active stages for a ShowSet (can be multiple for parallel stages)
+function getActiveStages(showSet: ShowSet): StageName[] {
+  // Sequential stages: screen, structure
+  if (showSet.stages.screen.status !== 'complete') {
+    return ['screen'];
+  }
+  if (showSet.stages.structure.status !== 'complete') {
+    return ['structure'];
+  }
+
+  // Integration - can be parallel with BIM360/2D when in engineer_review
+  const integratedStatus = showSet.stages.integrated.status;
+  if (integratedStatus !== 'complete' && integratedStatus !== 'engineer_review') {
+    return ['integrated'];
+  }
+
+  // At this point, integrated is either in engineer_review or complete
+  // BIM360 and 2D can be active in parallel
+  const stages: StageName[] = [];
+
+  if (integratedStatus === 'engineer_review') {
+    stages.push('integrated');
+  }
+
+  if (showSet.stages.inBim360.status !== 'complete') {
+    stages.push('inBim360');
+  }
+
+  if (showSet.stages.drawing2d.status !== 'complete') {
+    stages.push('drawing2d');
+  }
+
+  return stages;
+}
+
+// Group showsets by columns, showing completed stages + active stages
+function groupByColumnAndStatus(showSets: ShowSet[]): Record<ColumnName, Record<StageStatus, ShowSet[]>> {
+  const groups = {} as Record<ColumnName, Record<StageStatus, ShowSet[]>>;
+
+  // Initialize all groups
+  for (const column of COLUMNS) {
+    groups[column] = {
+      not_started: [],
+      in_progress: [],
+      engineer_review: [],
+      client_review: [],
+      complete: [],
+      on_hold: [],
+    };
+  }
+
+  for (const showSet of showSets) {
+    // Fully complete items go only to the Completed column
+    if (isFullyComplete(showSet)) {
+      groups['completed']['complete'].push(showSet);
+      continue;
+    }
+
+    // For in-progress items: show in completed stages + active stages
+    for (const stage of STAGES) {
+      const status = showSet.stages[stage].status;
+
+      if (status === 'complete') {
+        // Show in this stage's complete section
+        groups[stage]['complete'].push(showSet);
+      } else {
+        // Check if this is an active stage for this showSet
+        const activeStages = getActiveStages(showSet);
+        if (activeStages.includes(stage)) {
+          groups[stage][status].push(showSet);
+        }
+      }
+    }
+  }
+
+  return groups;
+}
+
+const cardColors: Record<StageStatus, string> = {
+  not_started: 'bg-slate-500/30 border-slate-500/50 hover:border-slate-400',
+  in_progress: 'bg-orange-500/30 border-orange-500/50 hover:border-orange-400',
+  engineer_review: 'bg-purple-500/30 border-purple-500/50 hover:border-purple-400',
+  client_review: 'bg-blue-500/30 border-blue-500/50 hover:border-blue-400',
+  complete: 'bg-emerald-500/30 border-emerald-500/50 hover:border-emerald-400',
+  on_hold: 'bg-red-500/30 border-red-500/50 hover:border-red-400',
+};
+
+function KanbanCard({
+  showSet,
+  status,
+  onClick,
+}: {
+  showSet: ShowSet;
+  status: StageStatus;
+  onClick: () => void;
+}) {
+  const { i18n } = useTranslation();
+  const lang = i18n.language as 'en' | 'zh' | 'zh-TW';
+  const description = showSet.description[lang] || showSet.description.en;
+
+  return (
+    <div
+      className={cn(
+        'group relative px-2 py-0.5 rounded border cursor-pointer transition-colors flex items-center justify-center',
+        cardColors[status]
+      )}
+      onClick={onClick}
+    >
+      <span className="text-sm font-medium">{showSet.showSetId}</span>
+
+      {/* Hover tooltip */}
+      <div className="absolute left-full top-0 ml-1 z-50 hidden group-hover:block w-40 p-2 bg-popover border rounded-lg shadow-lg overflow-hidden">
+        <div className="text-xs space-y-1">
+          <div className="font-medium">{showSet.showSetId}</div>
+          <div className="text-muted-foreground">{showSet.scene}</div>
+          <div className="text-muted-foreground truncate">{description}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatusGroup({
+  column,
+  status,
+  showSets,
+  onSelect,
+  t,
+}: {
+  column: ColumnName;
+  status: StageStatus;
+  showSets: ShowSet[];
+  onSelect: (id: string) => void;
+  t: (key: string) => string;
+}) {
+  // Don't show status groups that aren't valid for this column
+  if (!COLUMN_STATUSES[column].includes(status)) {
+    return null;
+  }
+
+  // Don't show empty groups
+  if (showSets.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mb-2">
+      <div className={cn('text-[9px] uppercase font-medium px-1 py-0.5 rounded mb-1 inline-block', statusColors[status])}>
+        {t(`status.${status}`)} ({showSets.length})
+      </div>
+      <div className="grid grid-cols-2 gap-1">
+        {showSets.map((showSet) => (
+          <KanbanCard
+            key={showSet.showSetId}
+            showSet={showSet}
+            status={status}
+            onClick={() => onSelect(showSet.showSetId)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function KanbanBoard({ showSets, onSelect }: KanbanBoardProps) {
+  const { t } = useTranslation();
+  const grouped = groupByColumnAndStatus(showSets);
+
+  // Count total items per column
+  const columnCounts = COLUMNS.reduce((acc, column) => {
+    acc[column] = Object.values(grouped[column]).reduce((sum, arr) => sum + arr.length, 0);
+    return acc;
+  }, {} as Record<ColumnName, number>);
+
+  // Get column title
+  const getColumnTitle = (column: ColumnName) => {
+    if (column === 'completed') {
+      return t('status.complete');
+    }
+    return t(`stages.${column}`);
+  };
+
+  return (
+    <div className="flex flex-col min-w-[1100px]">
+      {/* Column Headers */}
+      <div className="grid grid-cols-6 gap-2 mb-2">
+        {COLUMNS.map((column) => (
+          <div
+            key={column}
+            className={cn(
+              'px-3 py-2 rounded-t-lg border border-b-0 border-t-4 bg-muted/50 text-center',
+              columnColors[column]
+            )}
+          >
+            <div className="font-medium text-sm">{getColumnTitle(column)}</div>
+            <Badge variant="secondary" className="text-xs mt-1">
+              {columnCounts[column]}
+            </Badge>
+          </div>
+        ))}
+      </div>
+
+      {/* Columns */}
+      <div className="grid grid-cols-6 gap-2">
+        {COLUMNS.map((column) => (
+          <div
+            key={column}
+            className="rounded-b-lg border bg-muted/20 p-2 min-h-[200px]"
+          >
+            {STATUS_ORDER.map((status) => (
+              <StatusGroup
+                key={status}
+                column={column}
+                status={status}
+                showSets={grouped[column][status]}
+                onSelect={onSelect}
+                t={t}
+              />
+            ))}
+            {columnCounts[column] === 0 && (
+              <div className="text-xs text-muted-foreground text-center py-4">
+                —
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(where:*)",
+      "Bash(npm search:*)",
+      "Bash(npm install:*)",
+      "Bash(npx playwright install)",
+      "WebSearch",
+      "Bash(aws sts get-caller-identity:*)",
+      "Bash(pnpm --version:*)",
+      "Bash(pnpm build:*)",
+      "Bash(npx cdk:*)",
+      "Bash(pnpm deploy)",
+      "Bash(aws s3 sync:*)",
+      "Bash(aws cloudfront create-invalidation:*)"
+    ]
+  }
+}

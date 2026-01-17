@@ -1,0 +1,124 @@
+{
+  "common": {
+    "loading": "載入中...",
+    "save": "儲存",
+    "cancel": "取消",
+    "delete": "刪除",
+    "edit": "編輯",
+    "create": "建立",
+    "search": "搜尋",
+    "filter": "篩選",
+    "all": "全部",
+    "yes": "是",
+    "no": "否",
+    "confirm": "確認",
+    "close": "關閉",
+    "clear": "清除",
+    "error": "錯誤",
+    "success": "成功"
+  },
+  "nav": {
+    "dashboard": "儀表板",
+    "statusBoard": "狀態看板",
+    "admin": "管理"
+  },
+  "auth": {
+    "login": "登入",
+    "logout": "登出",
+    "email": "電子郵件",
+    "password": "密碼",
+    "forgotPassword": "忘記密碼？",
+    "welcomeBack": "歡迎回來",
+    "signInToContinue": "登入以繼續使用 UniSync"
+  },
+  "showset": {
+    "title": "展示組",
+    "id": "展示組 ID",
+    "area": "區域",
+    "scene": "場景",
+    "description": "描述",
+    "vmList": "VM 列表",
+    "stages": "階段",
+    "links": "連結",
+    "modelUrl": "模型連結",
+    "drawingsUrl": "圖紙連結",
+    "createNew": "建立展示組",
+    "details": "展示組詳情",
+    "noShowSets": "未找到展示組",
+    "noLinks": "暫無連結",
+    "deleteConfirm": "確定要刪除 {{id}} 嗎？此操作無法撤銷。"
+  },
+  "stages": {
+    "screen": "螢幕",
+    "structure": "結構",
+    "integrated": "整合",
+    "inBim360": "在 BIM360",
+    "drawing2d": "2D 圖紙",
+    "short": {
+      "screen": "螢幕",
+      "structure": "結構",
+      "integrated": "整合",
+      "inBim360": "BIM",
+      "drawing2d": "2D圖"
+    }
+  },
+  "status": {
+    "not_started": "未開始",
+    "in_progress": "進行中",
+    "complete": "已完成",
+    "on_hold": "暫停",
+    "client_review": "客戶審核",
+    "engineer_review": "工程師審核"
+  },
+  "notes": {
+    "title": "備註",
+    "addNote": "新增備註",
+    "noNotes": "暫無備註",
+    "translating": "翻譯中...",
+    "translationFailed": "翻譯失敗",
+    "viewOriginal": "檢視原文"
+  },
+  "sessions": {
+    "title": "活動工作階段",
+    "startSession": "開始工作",
+    "endSession": "結束",
+    "activity": "活動",
+    "workingOn": "正在處理",
+    "noActiveSessions": "無活動工作階段",
+    "finishWork": "完成工作",
+    "stageCompleteQuestion": "{{stage}}階段完成了嗎？",
+    "finalStageCompleteQuestion": "{{stage}}階段完成了嗎？",
+    "nextStageReady": "這將標記為準備進入{{stage}}。",
+    "notYet": "還沒有",
+    "yesComplete": "是的，完成"
+  },
+  "admin": {
+    "title": "管理",
+    "users": "使用者",
+    "createUser": "建立使用者",
+    "editUser": "編輯使用者",
+    "role": "角色",
+    "status": "狀態",
+    "active": "活躍",
+    "deactivated": "已停用"
+  },
+  "roles": {
+    "admin": "管理員",
+    "bim_coordinator": "BIM 協調員",
+    "3d_modeller": "3D 建模師",
+    "2d_drafter": "2D 製圖員"
+  },
+  "areas": {
+    "311": "311 景點塔",
+    "312": "312 漫威廣場"
+  },
+  "views": {
+    "table": "表格",
+    "kanban": "看板"
+  },
+  "errors": {
+    "loginFailed": "登入失敗，請檢查您的憑據。",
+    "sessionExpired": "工作階段已過期，請重新登入。",
+    "networkError": "網路錯誤，請重試。"
+  }
+}

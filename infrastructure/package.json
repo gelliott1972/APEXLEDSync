@@ -1,0 +1,28 @@
+{
+  "name": "@unisync/infrastructure",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist cdk.out",
+    "synth": "cdk synth",
+    "deploy": "cdk deploy --all --require-approval never --profile AdministratorAccess-726966883566",
+    "deploy:db": "cdk deploy UnisyncDatabaseStack --profile AdministratorAccess-726966883566",
+    "deploy:auth": "cdk deploy UnisyncAuthStack --profile AdministratorAccess-726966883566",
+    "deploy:api": "cdk deploy UnisyncApiStack --profile AdministratorAccess-726966883566",
+    "deploy:frontend": "cdk deploy UnisyncFrontendStack --profile AdministratorAccess-726966883566",
+    "diff": "cdk diff --profile AdministratorAccess-726966883566",
+    "destroy": "cdk destroy --all --profile AdministratorAccess-726966883566",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.170.0",
+    "constructs": "^10.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "aws-cdk": "^2.170.0",
+    "typescript": "^5.7.0"
+  }
+}

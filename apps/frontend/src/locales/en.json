@@ -1,0 +1,124 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search",
+    "filter": "Filter",
+    "all": "All",
+    "yes": "Yes",
+    "no": "No",
+    "confirm": "Confirm",
+    "close": "Close",
+    "clear": "Clear",
+    "error": "Error",
+    "success": "Success"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "statusBoard": "Status Board",
+    "admin": "Admin"
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Forgot Password?",
+    "welcomeBack": "Welcome Back",
+    "signInToContinue": "Sign in to continue to UniSync"
+  },
+  "showset": {
+    "title": "ShowSets",
+    "id": "ShowSet ID",
+    "area": "Area",
+    "scene": "Scene",
+    "description": "Description",
+    "vmList": "VM List",
+    "stages": "Stages",
+    "links": "Links",
+    "modelUrl": "Model URL",
+    "drawingsUrl": "Drawings URL",
+    "createNew": "Create ShowSet",
+    "details": "ShowSet Details",
+    "noShowSets": "No ShowSets found",
+    "noLinks": "No links available",
+    "deleteConfirm": "Are you sure you want to delete {{id}}? This action cannot be undone."
+  },
+  "stages": {
+    "screen": "Screen",
+    "structure": "Structure",
+    "integrated": "Integrated",
+    "inBim360": "In BIM360",
+    "drawing2d": "2D Drawing",
+    "short": {
+      "screen": "SCREEN",
+      "structure": "STRUCT",
+      "integrated": "INTEG",
+      "inBim360": "BIM360",
+      "drawing2d": "2D-DWG"
+    }
+  },
+  "status": {
+    "not_started": "Not Started",
+    "in_progress": "In Progress",
+    "complete": "Complete",
+    "on_hold": "On Hold",
+    "client_review": "Client Review",
+    "engineer_review": "Engineer Review"
+  },
+  "notes": {
+    "title": "Notes",
+    "addNote": "Add Note",
+    "noNotes": "No notes yet",
+    "translating": "Translating...",
+    "translationFailed": "Translation failed",
+    "viewOriginal": "View Original"
+  },
+  "sessions": {
+    "title": "Active Sessions",
+    "startSession": "Start Working",
+    "endSession": "Finish",
+    "activity": "Activity",
+    "workingOn": "Working on",
+    "noActiveSessions": "No active sessions",
+    "finishWork": "Finish Working",
+    "stageCompleteQuestion": "Is the {{stage}} stage complete?",
+    "finalStageCompleteQuestion": "Is the {{stage}} stage complete?",
+    "nextStageReady": "This will mark it ready for {{stage}}.",
+    "notYet": "Not Yet",
+    "yesComplete": "Yes, Complete"
+  },
+  "admin": {
+    "title": "Administration",
+    "users": "Users",
+    "createUser": "Create User",
+    "editUser": "Edit User",
+    "role": "Role",
+    "status": "Status",
+    "active": "Active",
+    "deactivated": "Deactivated"
+  },
+  "roles": {
+    "admin": "Admin",
+    "bim_coordinator": "BIM Coordinator",
+    "3d_modeller": "3D Modeller",
+    "2d_drafter": "2D Drafter"
+  },
+  "areas": {
+    "311": "311 Attraction Tower",
+    "312": "312 Marvel Plaza"
+  },
+  "views": {
+    "table": "Table",
+    "kanban": "Kanban"
+  },
+  "errors": {
+    "loginFailed": "Login failed. Please check your credentials.",
+    "sessionExpired": "Session expired. Please login again.",
+    "networkError": "Network error. Please try again."
+  }
+}
