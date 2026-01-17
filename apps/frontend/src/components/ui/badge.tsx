@@ -14,14 +14,13 @@ const badgeVariants = cva(
         destructive:
           'border-transparent bg-destructive text-destructive-foreground shadow hover:bg-destructive/80',
         outline: 'text-foreground',
-        // Status variants
-        not_started: 'border-transparent bg-slate-300 text-slate-800 dark:bg-slate-600 dark:text-slate-100',
-        in_progress: 'border-transparent bg-orange-500 text-white',
-        complete: 'border-transparent bg-emerald-500 text-white',
-        on_hold: 'border-transparent bg-red-500 text-white',
-        // Review variants
-        customer_review: 'border-transparent bg-blue-500 text-white',
-        engineer_review: 'border-transparent bg-purple-500 text-white',
+        // Status variants (matching StageStatus values)
+        not_started: 'border-slate-500/50 bg-slate-500/30 text-slate-900 dark:text-white',
+        in_progress: 'border-orange-500/50 bg-orange-500/30 text-orange-900 dark:text-white',
+        engineer_review: 'border-purple-500/50 bg-purple-500/30 text-purple-900 dark:text-white',
+        client_review: 'border-blue-500/50 bg-blue-500/30 text-blue-900 dark:text-white',
+        complete: 'border-emerald-500/50 bg-emerald-500/30 text-emerald-900 dark:text-white',
+        on_hold: 'border-red-500/50 bg-red-500/30 text-red-900 dark:text-white',
       },
     },
     defaultVariants: {

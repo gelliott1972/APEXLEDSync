@@ -55,3 +55,23 @@ Uses SSO profile `AdministratorAccess-726966883566`. All resources prefixed with
 - Zustand for UI state (filters, views)
 - react-i18next for i18n (en, zh, zh-TW)
 - shadcn/ui components in `src/components/ui/`
+
+## Tailwind v4 Dark Mode
+
+This project uses Tailwind v4 with `@import "tailwindcss"`. The `dark:` variant does NOT work reliably with utility classes like `dark:text-white`.
+
+**Do NOT use**: `dark:text-white`, `dark:bg-*`, etc. in component classes
+
+**Instead**: Define custom CSS classes in `src/index.css` using the `.dark` selector:
+
+```css
+.dark .my-text {
+  color: white !important;
+}
+
+.my-text {
+  color: black;
+}
+```
+
+See `kanban-text` class in `index.css` as an example.

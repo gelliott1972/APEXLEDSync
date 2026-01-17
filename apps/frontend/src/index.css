@@ -112,3 +112,12 @@
 .dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
   background: oklch(0.45 0 0);
 }
+
+/* Kanban text colors for dark mode */
+.dark .kanban-text {
+  color: white !important;
+}
+
+.kanban-text {
+  color: black;
+}

@@ -48,12 +48,12 @@ const columnColors: Record<ColumnName, string> = {
 };
 
 const statusColors: Record<StageStatus, string> = {
-  not_started: 'bg-slate-500/20 text-slate-400',
-  in_progress: 'bg-orange-500/20 text-orange-400',
-  engineer_review: 'bg-purple-500/20 text-purple-400',
-  client_review: 'bg-blue-500/20 text-blue-400',
-  complete: 'bg-emerald-500/20 text-emerald-400',
-  on_hold: 'bg-red-500/20 text-red-400',
+  not_started: 'bg-slate-500/30 dark:bg-slate-500/40',
+  in_progress: 'bg-orange-500/30 dark:bg-orange-500/40',
+  engineer_review: 'bg-purple-500/30 dark:bg-purple-500/40',
+  client_review: 'bg-blue-500/30 dark:bg-blue-500/40',
+  complete: 'bg-emerald-500/30 dark:bg-emerald-500/40',
+  on_hold: 'bg-red-500/30 dark:bg-red-500/40',
 };
 
 // Check if a ShowSet is fully complete (all stages done)
@@ -169,7 +169,7 @@ function KanbanCard({
       )}
       onClick={onClick}
     >
-      <span className="text-sm font-medium">{showSet.showSetId}</span>
+      <span className="text-sm font-medium kanban-text">{showSet.showSetId}</span>
 
       {/* Hover tooltip */}
       <div className="absolute left-full top-0 ml-1 z-50 hidden group-hover:block w-40 p-2 bg-popover border rounded-lg shadow-lg overflow-hidden">
@@ -208,8 +208,8 @@ function StatusGroup({
 
   return (
     <div className="mb-2">
-      <div className={cn('text-[9px] uppercase font-medium px-1 py-0.5 rounded mb-1 inline-block', statusColors[status])}>
-        {t(`status.${status}`)} ({showSets.length})
+      <div className={cn('text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded mb-1 inline-block', statusColors[status])}>
+        <span className="kanban-text">{t(`status.${status}`)} ({showSets.length})</span>
       </div>
       <div className="grid grid-cols-2 gap-1">
         {showSets.map((showSet) => (
