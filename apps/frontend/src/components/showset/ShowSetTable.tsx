@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Square, Play, MessageSquare, Pause, Eye, UserCheck } from 'lucide-react';
+import { Square, Play, MessageSquare, Pause, UserCheck } from 'lucide-react';
 import type { ShowSet, StageName } from '@unisync/shared-types';
 import { showSetsApi } from '@/lib/api';
 import { useSessionStore } from '@/stores/session-store';
@@ -176,7 +176,7 @@ export function ShowSetTable({ showSets, onSelect, onSelectNotes }: ShowSetTable
                       {status === 'in_progress' && 'WIP'}
                       {status === 'complete' && '✓'}
                       {status === 'on_hold' && <Pause className="h-4 w-4" />}
-                      {status === 'client_review' && <Eye className="h-4 w-4" />}
+                      {status === 'client_review' && <UserCheck className="h-4 w-4" />}
                       {status === 'engineer_review' && <UserCheck className="h-4 w-4" />}
                     </Badge>
                   </td>

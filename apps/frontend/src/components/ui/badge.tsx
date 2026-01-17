@@ -14,13 +14,13 @@ const badgeVariants = cva(
         destructive:
           'border-transparent bg-destructive text-destructive-foreground shadow hover:bg-destructive/80',
         outline: 'text-foreground',
-        // Status variants (matching StageStatus values)
-        not_started: 'border-slate-500/50 bg-slate-500/30 text-slate-900 dark:text-white',
-        in_progress: 'border-orange-500/50 bg-orange-500/30 text-orange-900 dark:text-white',
-        engineer_review: 'border-purple-500/50 bg-purple-500/30 text-purple-900 dark:text-white',
-        client_review: 'border-blue-500/50 bg-blue-500/30 text-blue-900 dark:text-white',
-        complete: 'border-emerald-500/50 bg-emerald-500/30 text-emerald-900 dark:text-white',
-        on_hold: 'border-red-500/50 bg-red-500/30 text-red-900 dark:text-white',
+        // Status variants (matching StageStatus values) - uses badge-text CSS class for dark mode
+        not_started: 'border-slate-500/50 bg-slate-500/30 badge-text',
+        in_progress: 'border-orange-500/50 bg-orange-500/30 badge-text',
+        engineer_review: 'border-purple-500/50 bg-purple-500/30 badge-text',
+        client_review: 'border-blue-500/50 bg-blue-500/30 badge-text',
+        complete: 'border-emerald-500/50 bg-emerald-500/30 badge-text',
+        on_hold: 'border-red-500/50 bg-red-500/30 badge-text',
       },
     },
     defaultVariants: {

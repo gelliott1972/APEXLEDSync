@@ -113,11 +113,13 @@
   background: oklch(0.45 0 0);
 }
 
-/* Kanban text colors for dark mode */
-.dark .kanban-text {
+/* Dark mode text colors */
+.dark .kanban-text,
+.dark .badge-text {
   color: white !important;
 }
 
-.kanban-text {
+.kanban-text,
+.badge-text {
   color: black;
 }
