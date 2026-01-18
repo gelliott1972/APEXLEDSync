@@ -24,6 +24,8 @@ export type {
   StageInfoSimple,
   ShowSetStages,
   ShowSetLinks,
+  VersionType,
+  VersionHistoryEntry,
   ShowSet,
   ShowSetCreateInput,
   ShowSetUpdateInput,
@@ -38,6 +40,7 @@ export { STAGE_PERMISSIONS, STATUS_COLORS } from './showset.js';
 // Note types
 export type {
   TranslationStatus,
+  NoteAttachment,
   Note,
   NoteCreateInput,
   NoteUpdateInput,

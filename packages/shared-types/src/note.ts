@@ -3,6 +3,15 @@ import type { LocalizedString } from './showset.js';
 
 export type TranslationStatus = 'pending' | 'complete' | 'failed';
 
+export interface NoteAttachment {
+  id: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  s3Key: string;
+  uploadedAt: string;
+}
+
 export interface Note {
   noteId: string;
   showSetId: string;
@@ -11,6 +20,8 @@ export interface Note {
   originalLang: Language;
   content: LocalizedString;
   translationStatus: TranslationStatus;
+  attachments: NoteAttachment[];
+  isRevisionNote?: boolean;
   createdAt: string;
   updatedAt: string;
 }

@@ -123,3 +123,14 @@
 .badge-text {
   color: black;
 }
+
+/* Revision note styling - amber/yellow background for revision notes */
+.dark .revision-note {
+  background: rgba(245, 158, 11, 0.2) !important;
+  border-color: rgba(245, 158, 11, 0.4) !important;
+}
+
+.revision-note {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.3);
+}

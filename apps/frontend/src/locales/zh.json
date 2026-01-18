@@ -68,7 +68,8 @@
     "complete": "已完成",
     "on_hold": "暂停",
     "client_review": "客户审核",
-    "engineer_review": "工程师审核"
+    "engineer_review": "工程师审核",
+    "revision_required": "需要修改"
   },
   "notes": {
     "title": "备注",

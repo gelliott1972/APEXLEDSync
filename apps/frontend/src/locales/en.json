@@ -68,7 +68,8 @@
     "complete": "Complete",
     "on_hold": "On Hold",
     "client_review": "Client Review",
-    "engineer_review": "Engineer Review"
+    "engineer_review": "Engineer Review",
+    "revision_required": "Revision Required"
   },
   "notes": {
     "title": "Notes",

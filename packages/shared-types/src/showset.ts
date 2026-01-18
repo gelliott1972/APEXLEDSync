@@ -1,6 +1,6 @@
 export type Area = '311' | '312';
 
-export type StageStatus = 'not_started' | 'in_progress' | 'complete' | 'on_hold' | 'client_review' | 'engineer_review';
+export type StageStatus = 'not_started' | 'in_progress' | 'complete' | 'on_hold' | 'client_review' | 'engineer_review' | 'revision_required';
 
 export type StageName =
   | 'screen'
@@ -47,6 +47,18 @@ export interface ShowSetLinks {
   drawingsUrl: string | null;
 }
 
+// Version types
+export type VersionType = 'screenVersion' | 'revitVersion' | 'drawingVersion';
+
+export interface VersionHistoryEntry {
+  id: string;
+  versionType: VersionType;
+  version: number;
+  reason: LocalizedString;
+  createdAt: string;
+  createdBy: string;
+}
+
 export interface ShowSet {
   showSetId: string;
   area: Area;
@@ -55,6 +67,11 @@ export interface ShowSet {
   vmList: VMItem[];
   stages: ShowSetStages;
   links: ShowSetLinks;
+  // Version tracking
+  screenVersion: number;
+  revitVersion: number;
+  drawingVersion: number;
+  versionHistory: VersionHistoryEntry[];
   createdAt: string;
   updatedAt: string;
 }
@@ -113,4 +130,5 @@ export const STATUS_COLORS: Record<StageStatus, string> = {
   on_hold: 'red',
   client_review: 'blue',
   engineer_review: 'purple',
+  revision_required: 'amber',
 };

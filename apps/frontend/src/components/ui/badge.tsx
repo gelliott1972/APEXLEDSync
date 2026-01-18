@@ -19,6 +19,7 @@ const badgeVariants = cva(
         in_progress: 'border-orange-500/50 bg-orange-500/30 badge-text',
         engineer_review: 'border-purple-500/50 bg-purple-500/30 badge-text',
         client_review: 'border-blue-500/50 bg-blue-500/30 badge-text',
+        revision_required: 'border-amber-500/50 bg-amber-500/30 badge-text',
         complete: 'border-emerald-500/50 bg-emerald-500/30 badge-text',
         on_hold: 'border-red-500/50 bg-red-500/30 badge-text',
       },

@@ -15,16 +15,16 @@ type ColumnName = StageName | 'completed';
 const COLUMNS: ColumnName[] = ['screen', 'structure', 'integrated', 'inBim360', 'drawing2d', 'completed'];
 
 // Status display order within each stage
-const STATUS_ORDER: StageStatus[] = ['not_started', 'in_progress', 'engineer_review', 'client_review', 'complete', 'on_hold'];
+const STATUS_ORDER: StageStatus[] = ['not_started', 'in_progress', 'engineer_review', 'client_review', 'revision_required', 'complete', 'on_hold'];
 
 // Valid statuses per stage (for active items - not complete)
 // Note: Only Screen has 'not_started' - other stages start at 'in_progress'
 const STAGE_ACTIVE_STATUSES: Record<StageName, StageStatus[]> = {
   screen: ['not_started', 'in_progress', 'on_hold'],
   structure: ['in_progress', 'on_hold'],
-  integrated: ['in_progress', 'engineer_review', 'on_hold'],
-  inBim360: ['in_progress', 'client_review', 'on_hold'],
-  drawing2d: ['in_progress', 'engineer_review', 'client_review', 'on_hold'],
+  integrated: ['in_progress', 'engineer_review', 'revision_required', 'on_hold'],
+  inBim360: ['in_progress', 'client_review', 'revision_required', 'on_hold'],
+  drawing2d: ['in_progress', 'engineer_review', 'client_review', 'revision_required', 'on_hold'],
 };
 
 // Valid statuses to show per column (active + complete for stages, only complete for completed column)
@@ -32,9 +32,9 @@ const STAGE_ACTIVE_STATUSES: Record<StageName, StageStatus[]> = {
 const COLUMN_STATUSES: Record<ColumnName, StageStatus[]> = {
   screen: ['not_started', 'in_progress', 'complete', 'on_hold'],
   structure: ['in_progress', 'complete', 'on_hold'],
-  integrated: ['in_progress', 'engineer_review', 'complete', 'on_hold'],
-  inBim360: ['in_progress', 'client_review', 'complete', 'on_hold'],
-  drawing2d: ['in_progress', 'engineer_review', 'client_review', 'complete', 'on_hold'],
+  integrated: ['in_progress', 'engineer_review', 'revision_required', 'complete', 'on_hold'],
+  inBim360: ['in_progress', 'client_review', 'revision_required', 'complete', 'on_hold'],
+  drawing2d: ['in_progress', 'engineer_review', 'client_review', 'revision_required', 'complete', 'on_hold'],
   completed: ['complete'],
 };
 
@@ -52,6 +52,7 @@ const statusColors: Record<StageStatus, string> = {
   in_progress: 'bg-orange-500/30 dark:bg-orange-500/40',
   engineer_review: 'bg-purple-500/30 dark:bg-purple-500/40',
   client_review: 'bg-blue-500/30 dark:bg-blue-500/40',
+  revision_required: 'bg-amber-500/30 dark:bg-amber-500/40',
   complete: 'bg-emerald-500/30 dark:bg-emerald-500/40',
   on_hold: 'bg-red-500/30 dark:bg-red-500/40',
 };
@@ -144,6 +145,7 @@ const cardColors: Record<StageStatus, string> = {
   in_progress: 'bg-orange-500/30 border-orange-500/50 hover:border-orange-400',
   engineer_review: 'bg-purple-500/30 border-purple-500/50 hover:border-purple-400',
   client_review: 'bg-blue-500/30 border-blue-500/50 hover:border-blue-400',
+  revision_required: 'bg-amber-500/30 border-amber-500/50 hover:border-amber-400',
   complete: 'bg-emerald-500/30 border-emerald-500/50 hover:border-emerald-400',
   on_hold: 'bg-red-500/30 border-red-500/50 hover:border-red-400',
 };

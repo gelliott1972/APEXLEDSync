@@ -12,6 +12,7 @@ export interface User {
   status: UserStatus;
   preferredLang: Language;
   cognitoSub: string;
+  canEditVersions: boolean;
   createdAt: string;
   updatedAt: string;
 }
