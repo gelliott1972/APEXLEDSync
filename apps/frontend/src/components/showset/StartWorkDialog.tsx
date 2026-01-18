@@ -180,7 +180,10 @@ export function StartWorkDialog({ showSet, open, onClose }: StartWorkDialogProps
 
   const updateStageMutation = useMutation({
     mutationFn: ({ stage, status, skipVersionIncrement }: { stage: StageName; status: StageStatus; skipVersionIncrement?: boolean }) =>
-      showSetsApi.updateStage(showSet.showSetId, stage, { status, skipVersionIncrement }),
+      showSetsApi.updateStage(showSet.showSetId, stage, {
+        status,
+        ...(skipVersionIncrement !== undefined && { skipVersionIncrement }),
+      }),
   });
 
   const toggleStage = (stage: StageName) => {
