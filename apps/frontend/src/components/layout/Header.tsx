@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Languages, LogOut, User, LayoutDashboard, Activity, Users, Moon, Sun, Plus } from 'lucide-react';
+import { Languages, LogOut, User, LayoutDashboard, Activity, Users, Moon, Sun, Plus, FlaskConical } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
+import type { UserRole } from '@unisync/shared-types';
 import { useSessionStore } from '@/stores/session-store';
 import { useUIStore } from '@/stores/ui-store';
 import { Button } from '@/components/ui/button';
@@ -16,13 +17,24 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { CreateShowSetDialog } from '@/components/showset/CreateShowSetDialog';
 
+const ALL_ROLES: UserRole[] = ['admin', 'bim_coordinator', 'engineer', '3d_modeller', '2d_drafter'];
+
 export function Header() {
   const { t, i18n } = useTranslation();
-  const { user, logout } = useAuthStore();
+  const { user, logout, effectiveRole, roleOverride, showRoleSwitcher, setRoleOverride, setShowRoleSwitcher } = useAuthStore();
   const { isWorking, activity, endSession } = useSessionStore();
+  const canSwitchRoles = user?.email === 'grant@candelic.com';
   const { theme, toggleTheme } = useUIStore();
   const location = useLocation();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -48,7 +60,8 @@ export function Header() {
         .slice(0, 2)
     : '?';
 
-  const isAdmin = user?.role === 'admin';
+  const currentRole = effectiveRole();
+  const isAdmin = currentRole === 'admin';
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
     cn(
@@ -87,6 +100,28 @@ export function Header() {
           <Badge variant="in_progress" className="hidden sm:flex whitespace-nowrap">
             {activity}
           </Badge>
+        )}
+
+        {/* Role Switcher (grant@candelic.com only) */}
+        {canSwitchRoles && showRoleSwitcher && (
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-amber-500/20 border border-amber-500/40">
+            <FlaskConical className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <Select
+              value={roleOverride || user?.role || ''}
+              onValueChange={(value) => setRoleOverride(value as UserRole)}
+            >
+              <SelectTrigger className="w-32 h-7 text-xs border-0 bg-transparent">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {ALL_ROLES.map((role) => (
+                  <SelectItem key={role} value={role}>
+                    {t(`roles.${role}`)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         )}
 
         {/* Spacer */}
@@ -162,6 +197,28 @@ export function Header() {
                 <User className="mr-2 h-4 w-4" />
                 Profile
               </DropdownMenuItem>
+              {canSwitchRoles && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setShowRoleSwitcher(!showRoleSwitcher);
+                    }}
+                    className="flex items-center justify-between"
+                  >
+                    <span className="flex items-center">
+                      <FlaskConical className="mr-2 h-4 w-4" />
+                      {t('testing.roleSwitcher')}
+                    </span>
+                    <Switch
+                      checked={showRoleSwitcher}
+                      onCheckedChange={setShowRoleSwitcher}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </DropdownMenuItem>
+                </>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" />

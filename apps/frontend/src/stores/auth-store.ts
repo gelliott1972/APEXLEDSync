@@ -17,20 +17,35 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  // Role switching for testing (grant@candelic.com only)
+  roleOverride: UserRole | null;
+  showRoleSwitcher: boolean;
+  effectiveRole: () => UserRole | undefined;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   setUser: (user: AuthUser | null) => void;
   clearError: () => void;
+  setRoleOverride: (role: UserRole | null) => void;
+  setShowRoleSwitcher: (show: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       isAuthenticated: false,
       isLoading: true,
       error: null,
+      roleOverride: null,
+      showRoleSwitcher: false,
+      effectiveRole: () => {
+        const state = get();
+        if (state.user?.email === 'grant@candelic.com' && state.roleOverride) {
+          return state.roleOverride;
+        }
+        return state.user?.role;
+      },
 
       login: async (email: string, password: string) => {
         set({ isLoading: true, error: null });
@@ -94,10 +109,17 @@ export const useAuthStore = create<AuthState>()(
 
       setUser: (user) => set({ user, isAuthenticated: !!user }),
       clearError: () => set({ error: null }),
+      setRoleOverride: (role) => set({ roleOverride: role }),
+      setShowRoleSwitcher: (show) => set({ showRoleSwitcher: show, roleOverride: show ? null : null }),
     }),
     {
       name: 'auth-storage',
-      partialize: (state) => ({ user: state.user, isAuthenticated: state.isAuthenticated }),
+      partialize: (state) => ({
+        user: state.user,
+        isAuthenticated: state.isAuthenticated,
+        showRoleSwitcher: state.showRoleSwitcher,
+        roleOverride: state.roleOverride,
+      }),
     }
   )
 );

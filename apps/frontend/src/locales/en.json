@@ -156,5 +156,8 @@
     "loginFailed": "Login failed. Please check your credentials.",
     "sessionExpired": "Session expired. Please login again.",
     "networkError": "Network error. Please try again."
+  },
+  "testing": {
+    "roleSwitcher": "Test Roles"
   }
 }

@@ -156,5 +156,8 @@
     "loginFailed": "登入失敗，請檢查您的憑據。",
     "sessionExpired": "工作階段已過期，請重新登入。",
     "networkError": "網路錯誤，請重試。"
+  },
+  "testing": {
+    "roleSwitcher": "測試角色"
   }
 }
