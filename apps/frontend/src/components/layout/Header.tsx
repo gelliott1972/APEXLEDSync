@@ -1,6 +1,7 @@
-import { NavLink } from 'react-router-dom';
+import { useState } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Languages, LogOut, User, LayoutDashboard, Activity, Users, Moon, Sun } from 'lucide-react';
+import { Languages, LogOut, User, LayoutDashboard, Activity, Users, Moon, Sun, Plus } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useSessionStore } from '@/stores/session-store';
 import { useUIStore } from '@/stores/ui-store';
@@ -16,12 +17,15 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { CreateShowSetDialog } from '@/components/showset/CreateShowSetDialog';
 
 export function Header() {
   const { t, i18n } = useTranslation();
   const { user, logout } = useAuthStore();
   const { isWorking, activity, endSession } = useSessionStore();
   const { theme, toggleTheme } = useUIStore();
+  const location = useLocation();
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   const changeLanguage = (lang: string) => {
     i18n.changeLanguage(lang);
@@ -90,6 +94,19 @@ export function Header() {
 
         {/* Right side actions */}
         <div className="flex items-center gap-1">
+          {/* Create ShowSet - only on dashboard for admins */}
+          {isAdmin && location.pathname === '/' && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9"
+              onClick={() => setCreateDialogOpen(true)}
+              title={t('showset.createNew')}
+            >
+              <Plus className="h-5 w-5" />
+            </Button>
+          )}
+
           {/* Theme Toggle */}
           <Button variant="ghost" size="icon" className="h-9 w-9" onClick={toggleTheme}>
             {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
@@ -154,6 +171,12 @@ export function Header() {
           </DropdownMenu>
         </div>
       </div>
+
+      {/* Create ShowSet Dialog */}
+      <CreateShowSetDialog
+        open={createDialogOpen}
+        onClose={() => setCreateDialogOpen(false)}
+      />
     </header>
   );
 }

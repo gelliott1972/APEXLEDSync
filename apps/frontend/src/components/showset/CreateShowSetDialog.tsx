@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import type { Area, Language } from '@unisync/shared-types';
+import type { Area } from '@unisync/shared-types';
 
 interface CreateShowSetDialogProps {
   open: boolean;

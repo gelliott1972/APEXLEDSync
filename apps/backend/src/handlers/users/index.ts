@@ -38,13 +38,13 @@ const USER_POOL_ID = process.env.USER_POOL_ID!;
 const createUserSchema = z.object({
   email: z.string().email(),
   name: z.string().min(1).max(100),
-  role: z.enum(['admin', 'bim_coordinator', '3d_modeller', '2d_drafter']),
+  role: z.enum(['admin', 'bim_coordinator', 'engineer', '3d_modeller', '2d_drafter']),
   preferredLang: z.enum(['en', 'zh', 'zh-TW']).optional().default('en'),
 });
 
 const updateUserSchema = z.object({
   name: z.string().min(1).max(100).optional(),
-  role: z.enum(['admin', 'bim_coordinator', '3d_modeller', '2d_drafter']).optional(),
+  role: z.enum(['admin', 'bim_coordinator', 'engineer', '3d_modeller', '2d_drafter']).optional(),
   preferredLang: z.enum(['en', 'zh', 'zh-TW']).optional(),
   status: z.enum(['active', 'deactivated']).optional(),
   canEditVersions: z.boolean().optional(),

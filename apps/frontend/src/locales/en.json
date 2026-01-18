@@ -15,7 +15,8 @@
     "close": "Close",
     "clear": "Clear",
     "error": "Error",
-    "success": "Success"
+    "success": "Success",
+    "optional": "optional"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -29,7 +30,13 @@
     "password": "Password",
     "forgotPassword": "Forgot Password?",
     "welcomeBack": "Welcome Back",
-    "signInToContinue": "Sign in to continue to UniSync"
+    "signInToContinue": "Sign in to continue to UniSync",
+    "setNewPassword": "Set New Password",
+    "newPasswordRequired": "You must set a new password before continuing.",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm Password",
+    "setPassword": "Set Password",
+    "passwordRequirements": "Password must be at least 8 characters with uppercase, lowercase, and numbers."
   },
   "showset": {
     "title": "ShowSets",
@@ -46,7 +53,11 @@
     "details": "ShowSet Details",
     "noShowSets": "No ShowSets found",
     "noLinks": "No links available",
-    "deleteConfirm": "Are you sure you want to delete {{id}}? This action cannot be undone."
+    "deleteConfirm": "Are you sure you want to delete {{id}}? This action cannot be undone.",
+    "versions": "Versions",
+    "versionReason": "Reason for version change",
+    "versionReasonPlaceholder": "Describe why the version is being incremented...",
+    "versionReasonRequired": "Please provide a reason for the version change"
   },
   "stages": {
     "screen": "Screen",
@@ -54,12 +65,14 @@
     "integrated": "Integrated",
     "inBim360": "In BIM360",
     "drawing2d": "2D Drawing",
+    "completed": "Done",
     "short": {
       "screen": "SCREEN",
       "structure": "STRUCT",
       "integrated": "INTEG",
       "inBim360": "BIM360",
-      "drawing2d": "2D-DWG"
+      "drawing2d": "2D-DWG",
+      "completed": "DONE"
     }
   },
   "status": {
@@ -98,7 +111,11 @@
     "finalStageCompleteQuestion": "Is the {{stage}} stage complete?",
     "nextStageReady": "This will mark it ready for {{stage}}.",
     "notYet": "Not Yet",
-    "yesComplete": "Yes, Complete"
+    "yesComplete": "Yes, Complete",
+    "selectStages": "Select which stages you want to work on for {{id}}.",
+    "noAvailableStages": "No stages available to work on.",
+    "finishWorkDescription": "You are currently working on: {{stages}}",
+    "markComplete": "Mark as complete:"
   },
   "admin": {
     "title": "Administration",
@@ -110,11 +127,14 @@
     "active": "Active",
     "deactivated": "Deactivated",
     "canEditVersions": "Edit Ver.",
-    "canEditVersionsTooltip": "Allow user to manually edit version numbers"
+    "canEditVersionsTooltip": "Allow user to manually edit version numbers",
+    "tempPasswordNote": "A temporary password will be emailed to the user. They will be required to set a new password on first login.",
+    "alwaysEnabled": "Always on"
   },
   "roles": {
     "admin": "Admin",
     "bim_coordinator": "BIM Coordinator",
+    "engineer": "Engineer",
     "3d_modeller": "3D Modeller",
     "2d_drafter": "2D Drafter"
   },
@@ -124,7 +144,13 @@
   },
   "views": {
     "table": "Table",
-    "kanban": "Kanban"
+    "kanban": "Kanban",
+    "showVersions": "Ver"
+  },
+  "revision": {
+    "description": "Please describe what changes are required for the {{stage}} stage.",
+    "placeholder": "Enter revision requirements...",
+    "submit": "Request Revision"
   },
   "errors": {
     "loginFailed": "Login failed. Please check your credentials.",

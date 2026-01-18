@@ -12,6 +12,8 @@ import type {
   SessionStartInput,
   User,
   UserUpdateInput,
+  UserRole,
+  Language,
   Activity,
   StageName,
 } from '@unisync/shared-types';
@@ -81,6 +83,12 @@ export const showSetsApi = {
 
   updateLinks: (id: string, input: LinksUpdateInput) =>
     request<void>(`/showsets/${id}/links`, {
+      method: 'PUT',
+      body: JSON.stringify(input),
+    }),
+
+  updateVersion: (id: string, input: { versionType: 'screenVersion' | 'revitVersion' | 'drawingVersion'; targetVersion: number; reason?: string; language: string }) =>
+    request<void>(`/showsets/${id}/version`, {
       method: 'PUT',
       body: JSON.stringify(input),
     }),
@@ -195,10 +203,10 @@ export const sessionsApi = {
       body: JSON.stringify(input),
     }),
 
-  heartbeat: (showSetId?: string, activity?: string) =>
+  heartbeat: (showSetId?: string, activity?: string, workingStages?: StageName[]) =>
     request<void>('/sessions/heartbeat', {
       method: 'POST',
-      body: JSON.stringify({ showSetId, activity }),
+      body: JSON.stringify({ showSetId, activity, workingStages }),
     }),
 
   end: () =>
@@ -219,6 +227,12 @@ export const usersApi = {
   list: () => request<User[]>('/users'),
 
   get: (userId: string) => request<User>(`/users/${userId}`),
+
+  create: (input: { email: string; name: string; role: UserRole; preferredLang?: Language }) =>
+    request<User>('/users', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
 
   update: (userId: string, input: UserUpdateInput) =>
     request<void>(`/users/${userId}`, {

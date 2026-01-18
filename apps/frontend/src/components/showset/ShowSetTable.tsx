@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Square, Play, MessageSquare, Pause, UserCheck, AlertTriangle } from 'lucide-react';
 import type { ShowSet, StageName } from '@unisync/shared-types';
-import { showSetsApi } from '@/lib/api';
 import { useSessionStore } from '@/stores/session-store';
+import { useUIStore } from '@/stores/ui-store';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { StartWorkDialog } from './StartWorkDialog';
 import { FinishWorkDialog } from './FinishWorkDialog';
 
 interface ShowSetTableProps {
@@ -22,16 +22,6 @@ const STAGES: StageName[] = [
   'inBim360',
   'drawing2d',
 ];
-
-// Get the current (first non-complete) stage
-function getCurrentStage(showSet: ShowSet): StageName {
-  for (const stage of STAGES) {
-    if (showSet.stages[stage].status !== 'complete') {
-      return stage;
-    }
-  }
-  return 'drawing2d';
-}
 
 // Get the relevant version for a stage
 function getVersionForStage(showSet: ShowSet, stage: StageName): number {
@@ -51,45 +41,29 @@ function getVersionForStage(showSet: ShowSet, stage: StageName): number {
 
 export function ShowSetTable({ showSets, onSelect, onSelectNotes }: ShowSetTableProps) {
   const { t, i18n } = useTranslation();
-  const queryClient = useQueryClient();
-  const { isWorking, currentShowSetId, startSession } = useSessionStore();
+  const { isWorking, currentShowSetId, workingStages } = useSessionStore();
+  const { showVersionNumbers } = useUIStore();
+  const [startDialogShowSet, setStartDialogShowSet] = useState<ShowSet | null>(null);
   const [finishDialogShowSet, setFinishDialogShowSet] = useState<ShowSet | null>(null);
-
-  const updateStageMutation = useMutation({
-    mutationFn: ({ showSetId, stage, status }: { showSetId: string; stage: StageName; status: string }) =>
-      showSetsApi.updateStage(showSetId, stage, { status }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['showsets'] });
-    },
-  });
 
   const getDescription = (showSet: ShowSet) => {
     const lang = i18n.language as 'en' | 'zh' | 'zh-TW';
     return showSet.description[lang] || showSet.description.en;
   };
 
-  const handleStartWork = async (e: React.MouseEvent, showSet: ShowSet) => {
+  const handleStartWork = (e: React.MouseEvent, showSet: ShowSet) => {
     e.stopPropagation();
-
-    // Get current stage and transition to in_progress if not_started
-    const currentStage = getCurrentStage(showSet);
-    const currentStatus = showSet.stages[currentStage].status;
-
-    if (currentStatus === 'not_started') {
-      await updateStageMutation.mutateAsync({
-        showSetId: showSet.showSetId,
-        stage: currentStage,
-        status: 'in_progress',
-      });
-    }
-
-    await startSession(showSet.showSetId, `Working on ${showSet.showSetId}`);
-    queryClient.invalidateQueries({ queryKey: ['sessions'] });
+    setStartDialogShowSet(showSet);
   };
 
   const handleFinishWork = (e: React.MouseEvent, showSet: ShowSet) => {
     e.stopPropagation();
     setFinishDialogShowSet(showSet);
+  };
+
+  // Check if a stage is currently being worked on
+  const isStageBeingWorked = (showSetId: string, stage: StageName) => {
+    return isWorking && currentShowSetId === showSetId && workingStages.includes(stage);
   };
 
   const colGroup = (
@@ -102,14 +76,15 @@ export function ShowSetTable({ showSets, onSelect, onSelectNotes }: ShowSetTable
       {STAGES.map((stage) => (
         <col key={stage} style={{ width: '72px' }} />
       ))}
+      <col style={{ width: '72px' }} /> {/* Completed column */}
     </colgroup>
   );
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 rounded-lg border overflow-hidden">
+    <div className="flex flex-col flex-1 min-h-0 rounded-lg border overflow-hidden table-scroll-container">
       {/* Header */}
       <div className="flex-shrink-0 bg-muted overflow-hidden" style={{ scrollbarGutter: 'stable' }}>
-        <table className="w-full text-sm table-fixed">
+        <table className="w-full text-sm table-fixed min-w-[900px]">
           {colGroup}
           <thead className="text-xs uppercase">
             <tr>
@@ -123,13 +98,16 @@ export function ShowSetTable({ showSets, onSelect, onSelectNotes }: ShowSetTable
                   {t(`stages.short.${stage}`)}
                 </th>
               ))}
+              <th className="px-2 py-3 text-center">
+                {t('stages.short.completed')}
+              </th>
             </tr>
           </thead>
         </table>
       </div>
       {/* Body */}
       <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin" style={{ scrollbarGutter: 'stable' }}>
-        <table className="w-full text-sm table-fixed">
+        <table className="w-full text-sm table-fixed min-w-[900px]">
           {colGroup}
           <tbody className="divide-y">
             {showSets.map((showSet) => (
@@ -183,30 +161,74 @@ export function ShowSetTable({ showSets, onSelect, onSelectNotes }: ShowSetTable
               {STAGES.map((stage) => {
                 const status = showSet.stages[stage].status;
                 const version = getVersionForStage(showSet, stage);
-                const showVersion = status !== 'not_started' && version > 1;
+                const beingWorked = isStageBeingWorked(showSet.showSetId, stage);
+
+                // Determine badge content based on showVersionNumbers toggle
+                const getBadgeContent = () => {
+                  if (status === 'not_started') return '—';
+
+                  if (showVersionNumbers) {
+                    // Show version numbers
+                    return `v${version}`;
+                  } else {
+                    // Show status icons
+                    switch (status) {
+                      case 'in_progress': return 'WIP';
+                      case 'complete': return '✓';
+                      case 'on_hold': return <Pause className="h-4 w-4" />;
+                      case 'client_review': return <UserCheck className="h-4 w-4" />;
+                      case 'engineer_review': return <UserCheck className="h-4 w-4" />;
+                      case 'revision_required': return <AlertTriangle className="h-4 w-4" />;
+                      default: return '—';
+                    }
+                  }
+                };
+
                 return (
                   <td key={stage} className="px-2 py-3 text-center">
                     <Badge
                       variant={status as any}
-                      className="text-xs w-full justify-center py-1.5"
+                      className={`text-xs w-full justify-center py-1.5 ${beingWorked ? 'ring-2 ring-primary ring-offset-1 animate-pulse' : ''}`}
                       title={`v${version}`}
                     >
-                      {status === 'not_started' && '—'}
-                      {status === 'in_progress' && (showVersion ? `WIP v${version}` : 'WIP')}
-                      {status === 'complete' && (showVersion ? `✓ v${version}` : '✓')}
-                      {status === 'on_hold' && <Pause className="h-4 w-4" />}
-                      {status === 'client_review' && <UserCheck className="h-4 w-4" />}
-                      {status === 'engineer_review' && <UserCheck className="h-4 w-4" />}
-                      {status === 'revision_required' && <AlertTriangle className="h-4 w-4" />}
+                      {getBadgeContent()}
                     </Badge>
                   </td>
                 );
               })}
+              {/* Completed column */}
+              <td className="px-2 py-3 text-center">
+                {showSet.stages.drawing2d.status === 'complete' ? (
+                  <Badge
+                    variant="complete"
+                    className="text-xs w-full justify-center py-1.5"
+                    title={`v${showSet.drawingVersion ?? 1}`}
+                  >
+                    {showVersionNumbers ? `v${showSet.drawingVersion ?? 1}` : '✓'}
+                  </Badge>
+                ) : (
+                  <Badge
+                    variant="not_started"
+                    className="text-xs w-full justify-center py-1.5"
+                  >
+                    —
+                  </Badge>
+                )}
+              </td>
             </tr>
           ))}
           </tbody>
         </table>
       </div>
+
+      {/* Start Work Dialog */}
+      {startDialogShowSet && (
+        <StartWorkDialog
+          showSet={startDialogShowSet}
+          open={true}
+          onClose={() => setStartDialogShowSet(null)}
+        />
+      )}
 
       {/* Finish Work Dialog */}
       {finishDialogShowSet && (

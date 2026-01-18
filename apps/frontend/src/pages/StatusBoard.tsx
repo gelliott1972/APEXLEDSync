@@ -100,7 +100,7 @@ export function StatusBoardPage() {
     if (isWorking) {
       await endSession();
     } else {
-      await startSession(undefined, 'Working');
+      await startSession(undefined, [], 'Working');
     }
   };
 

@@ -52,8 +52,23 @@ export function isBimCoordinator(role: UserRole): boolean {
   return role === 'admin' || role === 'bim_coordinator';
 }
 
+export function isEngineer(role: UserRole): boolean {
+  return role === 'engineer';
+}
+
+// Only admin can create/delete ShowSets
 export function canManageShowSets(role: UserRole): boolean {
-  return role === 'admin' || role === 'bim_coordinator';
+  return role === 'admin';
+}
+
+// Can work on stages (not just approve)
+export function canWorkOnStages(role: UserRole): boolean {
+  return role === 'admin' || role === 'bim_coordinator' || role === '3d_modeller' || role === '2d_drafter';
+}
+
+// Engineer can only approve (complete) or request revision
+export function canApproveStages(role: UserRole): boolean {
+  return role === 'admin' || role === 'bim_coordinator' || role === 'engineer';
 }
 
 export function canManageUsers(role: UserRole): boolean {

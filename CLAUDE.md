@@ -40,7 +40,43 @@ Uses SSO profile `AdministratorAccess-726966883566`. All resources prefixed with
 
 - **ShowSets**: 6-stage pipeline (screen → structure → integrated → inBim360 → awaitingClient → drawing2d)
 - **Areas**: 311 (Attraction Tower), 312 (Marvel Plaza)
-- **Roles**: admin, bim_coordinator, 3d_modeller, 2d_drafter
+- **Roles**: admin, bim_coordinator, engineer, 3d_modeller, 2d_drafter
+
+## Role Permissions
+
+| Action | Admin | BIM Coord | Engineer | 3D Modeller | 2D Drafter |
+|--------|-------|-----------|----------|-------------|------------|
+| Access Admin page | ✓ | | | | |
+| Create/delete ShowSets | ✓ | | | | |
+| Update Screen/Structure/Integrated | ✓ | ✓ | ✓* | ✓ | |
+| Update In BIM360 | ✓ | ✓ | ✓* | | |
+| Update 2D Drawing | ✓ | ✓ | ✓* | | ✓ |
+| Manage links | ✓ | ✓ | | | |
+| Add/edit own notes | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Delete any notes | ✓ | | | | |
+| Manage users | ✓ | | | | |
+
+*Engineer can only set status to "Complete" or "Revision Required" (approval-only)
+
+## Test Accounts
+
+| Email | Password | Role |
+|-------|----------|------|
+| grant@candelic.com | Password1234 | Admin |
+| admin@test.local | TestPass123 | Admin |
+| bim@test.local | TestPass123 | BIM Coordinator |
+| engineer@test.local | TestPass123 | Engineer |
+| modeller@test.local | TestPass123 | 3D Modeller |
+| drafter@test.local | TestPass123 | 2D Drafter |
+
+## Testing
+
+Test plan and Playwright tests are in `scratch/unisync-tests/`. Run with:
+```bash
+cd scratch/unisync-tests
+pnpm install
+pnpm test
+```
 
 ## API Patterns
 

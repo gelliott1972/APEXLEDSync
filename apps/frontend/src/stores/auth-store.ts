@@ -9,6 +9,7 @@ interface AuthUser {
   name: string;
   role: UserRole;
   preferredLang: Language;
+  canEditVersions: boolean;
 }
 
 interface AuthState {
@@ -40,12 +41,14 @@ export const useAuthStore = create<AuthState>()(
           const attributes = await fetchUserAttributes();
           console.log('User attributes:', attributes);
 
+          const role = (attributes['custom:role'] as UserRole) ?? 'viewer';
           const user: AuthUser = {
             userId: attributes['custom:userId'] ?? attributes.sub ?? '',
             email: attributes.email ?? email,
             name: attributes.name ?? email,
-            role: (attributes['custom:role'] as UserRole) ?? 'viewer',
+            role,
             preferredLang: (attributes['custom:preferredLang'] as Language) ?? 'en',
+            canEditVersions: attributes['custom:canEditVersions'] === 'true',
           };
 
           set({ user, isAuthenticated: true, isLoading: false });
@@ -73,12 +76,14 @@ export const useAuthStore = create<AuthState>()(
           await getCurrentUser();
           const attributes = await fetchUserAttributes();
 
+          const role = (attributes['custom:role'] as UserRole) ?? 'viewer';
           const user: AuthUser = {
             userId: attributes['custom:userId'] ?? attributes.sub ?? '',
             email: attributes.email ?? '',
             name: attributes.name ?? '',
-            role: (attributes['custom:role'] as UserRole) ?? 'viewer',
+            role,
             preferredLang: (attributes['custom:preferredLang'] as Language) ?? 'en',
+            canEditVersions: attributes['custom:canEditVersions'] === 'true',
           };
 
           set({ user, isAuthenticated: true, isLoading: false });

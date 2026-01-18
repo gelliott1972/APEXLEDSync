@@ -15,7 +15,8 @@
     "close": "关闭",
     "clear": "清除",
     "error": "错误",
-    "success": "成功"
+    "success": "成功",
+    "optional": "可选"
   },
   "nav": {
     "dashboard": "仪表板",
@@ -29,7 +30,13 @@
     "password": "密码",
     "forgotPassword": "忘记密码？",
     "welcomeBack": "欢迎回来",
-    "signInToContinue": "登录以继续使用 UniSync"
+    "signInToContinue": "登录以继续使用 UniSync",
+    "setNewPassword": "设置新密码",
+    "newPasswordRequired": "您必须设置新密码才能继续。",
+    "newPassword": "新密码",
+    "confirmPassword": "确认密码",
+    "setPassword": "设置密码",
+    "passwordRequirements": "密码必须至少8个字符，包含大写字母、小写字母和数字。"
   },
   "showset": {
     "title": "展示组",
@@ -46,7 +53,11 @@
     "details": "展示组详情",
     "noShowSets": "未找到展示组",
     "noLinks": "暂无链接",
-    "deleteConfirm": "确定要删除 {{id}} 吗？此操作无法撤销。"
+    "deleteConfirm": "确定要删除 {{id}} 吗？此操作无法撤销。",
+    "versions": "版本",
+    "versionReason": "版本更改原因",
+    "versionReasonPlaceholder": "请描述为什么要增加版本号...",
+    "versionReasonRequired": "请提供版本更改原因"
   },
   "stages": {
     "screen": "屏幕",
@@ -54,12 +65,14 @@
     "integrated": "集成",
     "inBim360": "在 BIM360",
     "drawing2d": "2D 图纸",
+    "completed": "完成",
     "short": {
       "screen": "屏幕",
       "structure": "结构",
       "integrated": "集成",
       "inBim360": "BIM",
-      "drawing2d": "2D图"
+      "drawing2d": "2D图",
+      "completed": "完成"
     }
   },
   "status": {
@@ -98,7 +111,11 @@
     "finalStageCompleteQuestion": "{{stage}}阶段完成了吗？",
     "nextStageReady": "这将标记为准备进入{{stage}}。",
     "notYet": "还没有",
-    "yesComplete": "是的，完成"
+    "yesComplete": "是的，完成",
+    "selectStages": "选择您要处理 {{id}} 的哪些阶段。",
+    "noAvailableStages": "没有可处理的阶段。",
+    "finishWorkDescription": "您当前正在处理：{{stages}}",
+    "markComplete": "标记为完成："
   },
   "admin": {
     "title": "管理",
@@ -110,11 +127,14 @@
     "active": "活跃",
     "deactivated": "已停用",
     "canEditVersions": "编辑版本",
-    "canEditVersionsTooltip": "允许用户手动编辑版本号"
+    "canEditVersionsTooltip": "允许用户手动编辑版本号",
+    "tempPasswordNote": "临时密码将通过电子邮件发送给用户。首次登录时需要设置新密码。",
+    "alwaysEnabled": "始终开启"
   },
   "roles": {
     "admin": "管理员",
     "bim_coordinator": "BIM 协调员",
+    "engineer": "工程师",
     "3d_modeller": "3D 建模师",
     "2d_drafter": "2D 制图员"
   },
@@ -124,7 +144,13 @@
   },
   "views": {
     "table": "表格",
-    "kanban": "看板"
+    "kanban": "看板",
+    "showVersions": "版本"
+  },
+  "revision": {
+    "description": "请描述 {{stage}} 阶段需要进行的修改。",
+    "placeholder": "输入修改要求...",
+    "submit": "请求修改"
   },
   "errors": {
     "loginFailed": "登录失败，请检查您的凭据。",

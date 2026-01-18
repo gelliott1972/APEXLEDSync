@@ -23,6 +23,10 @@ interface UIState {
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
 
+  // Version display toggle (icons vs version numbers)
+  showVersionNumbers: boolean;
+  setShowVersionNumbers: (show: boolean) => void;
+
   // Filters
   filters: Filters;
   setFilter: <K extends keyof Filters>(key: K, value: Filters[K]) => void;
@@ -72,6 +76,9 @@ export const useUIStore = create<UIState>()(
       viewMode: 'table',
       setViewMode: (mode) => set({ viewMode: mode }),
 
+      showVersionNumbers: false,
+      setShowVersionNumbers: (show) => set({ showVersionNumbers: show }),
+
       filters: defaultFilters,
       setFilter: (key, value) =>
         set((state) => ({
@@ -90,6 +97,7 @@ export const useUIStore = create<UIState>()(
       partialize: (state) => ({
         theme: state.theme,
         viewMode: state.viewMode,
+        showVersionNumbers: state.showVersionNumbers,
         sidebarOpen: state.sidebarOpen,
       }),
       onRehydrateStorage: () => (state) => {

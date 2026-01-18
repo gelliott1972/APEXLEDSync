@@ -8,8 +8,8 @@ import {
   now,
   ttlTimestamp,
 } from '@unisync/db-utils';
-import type { Session } from '@unisync/shared-types';
-import { SESSION_TTL_SECONDS } from '@unisync/shared-types';
+import type { Session, StageName } from '@unisync/shared-types';
+import { SESSION_TTL_SECONDS, STAGE_NAMES } from '@unisync/shared-types';
 import { withAuth, type AuthenticatedHandler } from '../../middleware/authorize.js';
 import {
   success,
@@ -18,13 +18,17 @@ import {
 } from '../../lib/response.js';
 
 // Schemas
+const stageNameSchema = z.enum(['screen', 'structure', 'integrated', 'inBim360', 'drawing2d']);
+
 const startSessionSchema = z.object({
   showSetId: z.string().optional(),
+  workingStages: z.array(stageNameSchema).optional().default([]),
   activity: z.string().min(1).max(200),
 });
 
 const heartbeatSchema = z.object({
   showSetId: z.string().optional(),
+  workingStages: z.array(stageNameSchema).optional(),
   activity: z.string().min(1).max(200).optional(),
 });
 
@@ -65,7 +69,7 @@ const startSession: AuthenticatedHandler = async (event, auth) => {
       });
     }
 
-    const { showSetId, activity } = parsed.data;
+    const { showSetId, workingStages, activity } = parsed.data;
     const timestamp = now();
 
     const session: Session & { PK: string; SK: string } = {
@@ -73,6 +77,7 @@ const startSession: AuthenticatedHandler = async (event, auth) => {
       userId: auth.userId,
       userName: auth.name,
       showSetId: showSetId ?? null,
+      workingStages: workingStages as StageName[],
       activity,
       startedAt: timestamp,
       lastHeartbeat: timestamp,
@@ -104,34 +109,8 @@ const heartbeat: AuthenticatedHandler = async (event, auth) => {
       });
     }
 
-    const { showSetId, activity } = parsed.data;
+    const { showSetId, workingStages, activity } = parsed.data;
     const timestamp = now();
-
-    // Build update expression dynamically
-    const updateExpressions = [
-      '#lastHeartbeat = :lastHeartbeat',
-      '#expiresAt = :expiresAt',
-    ];
-    const expressionAttributeNames: Record<string, string> = {
-      '#lastHeartbeat': 'lastHeartbeat',
-      '#expiresAt': 'expiresAt',
-    };
-    const expressionAttributeValues: Record<string, unknown> = {
-      ':lastHeartbeat': timestamp,
-      ':expiresAt': ttlTimestamp(SESSION_TTL_SECONDS),
-    };
-
-    if (showSetId !== undefined) {
-      updateExpressions.push('#showSetId = :showSetId');
-      expressionAttributeNames['#showSetId'] = 'showSetId';
-      expressionAttributeValues[':showSetId'] = showSetId;
-    }
-
-    if (activity !== undefined) {
-      updateExpressions.push('#activity = :activity');
-      expressionAttributeNames['#activity'] = 'activity';
-      expressionAttributeValues[':activity'] = activity;
-    }
 
     // Use PutCommand to upsert the session
     const session: Session & { PK: string; SK: string } = {
@@ -139,6 +118,7 @@ const heartbeat: AuthenticatedHandler = async (event, auth) => {
       userId: auth.userId,
       userName: auth.name,
       showSetId: showSetId ?? null,
+      workingStages: (workingStages ?? []) as StageName[],
       activity: activity ?? 'Working',
       startedAt: timestamp,
       lastHeartbeat: timestamp,

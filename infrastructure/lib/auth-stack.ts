@@ -69,6 +69,13 @@ export class AuthStack extends cdk.Stack {
       description: 'BIM Coordinators',
     });
 
+    // Engineer group
+    new cognito.CfnUserPoolGroup(this, 'EngineerGroup', {
+      userPoolId: this.userPool.userPoolId,
+      groupName: 'unisync-engineer',
+      description: 'Engineers',
+    });
+
     // 3D Modeller group
     new cognito.CfnUserPoolGroup(this, 'ModellerGroup', {
       userPoolId: this.userPool.userPoolId,

@@ -1,19 +1,20 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { ShowSet, StageName } from '@unisync/shared-types';
+import type { ShowSet, StageName, StageStatus } from '@unisync/shared-types';
 import { showSetsApi } from '@/lib/api';
 import { useSessionStore } from '@/stores/session-store';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface FinishWorkDialogProps {
   showSet: ShowSet;
@@ -21,62 +22,41 @@ interface FinishWorkDialogProps {
   onClose: () => void;
 }
 
-const STAGES_ORDER: StageName[] = [
-  'screen',
-  'structure',
-  'integrated',
-  'inBim360',
-  'drawing2d',
-];
-
-// Get the current (first non-complete) stage
-function getCurrentStage(showSet: ShowSet): StageName {
-  for (const stage of STAGES_ORDER) {
-    if (showSet.stages[stage].status !== 'complete') {
-      return stage;
-    }
-  }
-  return 'drawing2d';
-}
-
-// Get the next stage after the current one
-function getNextStage(currentStage: StageName): StageName | null {
-  const idx = STAGES_ORDER.indexOf(currentStage);
-  if (idx === -1 || idx >= STAGES_ORDER.length - 1) {
-    return null;
-  }
-  return STAGES_ORDER[idx + 1];
-}
-
 export function FinishWorkDialog({ showSet, open, onClose }: FinishWorkDialogProps) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { endSession } = useSessionStore();
+  const { workingStages, endSession } = useSessionStore();
+  const [stagesToComplete, setStagesToComplete] = useState<StageName[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const currentStage = getCurrentStage(showSet);
-  const nextStage = getNextStage(currentStage);
-
   const updateStageMutation = useMutation({
-    mutationFn: ({ stage, status }: { stage: StageName; status: string }) =>
+    mutationFn: ({ stage, status }: { stage: StageName; status: StageStatus }) =>
       showSetsApi.updateStage(showSet.showSetId, stage, { status }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['showsets'] });
-    },
   });
 
-  const handleFinish = async (markComplete: boolean) => {
+  const toggleStage = (stage: StageName) => {
+    setStagesToComplete((prev) =>
+      prev.includes(stage)
+        ? prev.filter((s) => s !== stage)
+        : [...prev, stage]
+    );
+  };
+
+  const handleFinish = async () => {
     setIsSubmitting(true);
     try {
-      if (markComplete) {
-        // Mark current stage as complete
+      // Mark selected stages as complete
+      for (const stage of stagesToComplete) {
         await updateStageMutation.mutateAsync({
-          stage: currentStage,
+          stage,
           status: 'complete',
         });
       }
+
       // End the session
       await endSession();
+
+      queryClient.invalidateQueries({ queryKey: ['showsets'] });
       queryClient.invalidateQueries({ queryKey: ['sessions'] });
       onClose();
     } catch (error) {
@@ -86,37 +66,50 @@ export function FinishWorkDialog({ showSet, open, onClose }: FinishWorkDialogPro
     }
   };
 
-  const currentStageName = t(`stages.${currentStage}`);
-  const nextStageName = nextStage ? t(`stages.${nextStage}`) : null;
+  const handleOpenChange = (isOpen: boolean) => {
+    if (!isOpen) {
+      setStagesToComplete([]);
+      onClose();
+    }
+  };
+
+  const stageNames = workingStages.map((s) => t(`stages.${s}`)).join(', ');
 
   return (
-    <AlertDialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{t('sessions.finishWork')}</AlertDialogTitle>
-          <AlertDialogDescription>
-            {nextStageName ? (
-              <>
-                {t('sessions.stageCompleteQuestion', { stage: currentStageName })}
-                <br />
-                <span className="text-sm text-muted-foreground mt-1 block">
-                  {t('sessions.nextStageReady', { stage: nextStageName })}
-                </span>
-              </>
-            ) : (
-              t('sessions.finalStageCompleteQuestion', { stage: currentStageName })
-            )}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={isSubmitting} onClick={() => handleFinish(false)}>
-            {t('sessions.notYet')}
-          </AlertDialogCancel>
-          <AlertDialogAction disabled={isSubmitting} onClick={() => handleFinish(true)}>
-            {t('sessions.yesComplete')}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{t('sessions.finishWork')}</DialogTitle>
+          <DialogDescription>
+            {t('sessions.finishWorkDescription', { stages: stageNames })}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="py-4 space-y-3">
+          <p className="text-sm font-medium">{t('sessions.markComplete')}</p>
+          {workingStages.map((stage) => (
+            <div key={stage} className="flex items-center space-x-3">
+              <Checkbox
+                id={`complete-${stage}`}
+                checked={stagesToComplete.includes(stage)}
+                onCheckedChange={() => toggleStage(stage)}
+              />
+              <Label htmlFor={`complete-${stage}`} className="cursor-pointer">
+                {t(`stages.${stage}`)}
+              </Label>
+            </div>
+          ))}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={isSubmitting}>
+            {t('common.cancel')}
+          </Button>
+          <Button onClick={handleFinish} disabled={isSubmitting}>
+            {isSubmitting ? t('common.loading') : t('sessions.finishWork')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

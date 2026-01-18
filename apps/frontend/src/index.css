@@ -16,7 +16,7 @@
   --color-accent: oklch(0.97 0 0);
   --color-accent-foreground: oklch(0.205 0 0);
   --color-destructive: oklch(0.577 0.245 27.325);
-  --color-destructive-foreground: oklch(0.577 0.245 27.325);
+  --color-destructive-foreground: oklch(0.985 0 0);
   --color-border: oklch(0.922 0 0);
   --color-input: oklch(0.922 0 0);
   --color-ring: oklch(0.708 0 0);
@@ -70,7 +70,7 @@
   --color-accent: oklch(0.269 0 0);
   --color-accent-foreground: oklch(0.985 0 0);
   --color-destructive: oklch(0.396 0.141 25.723);
-  --color-destructive-foreground: oklch(0.637 0.237 25.331);
+  --color-destructive-foreground: oklch(0.985 0 0);
   --color-border: oklch(0.269 0 0);
   --color-input: oklch(0.269 0 0);
   --color-ring: oklch(0.439 0 0);
@@ -133,4 +133,38 @@
 .revision-note {
   background: rgba(245, 158, 11, 0.15);
   border-color: rgba(245, 158, 11, 0.3);
+}
+
+/* Mobile responsive styles */
+.table-scroll-container {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-scroll-container table {
+  min-width: 900px;
+}
+
+/* Kanban columns - compact with minimum width to prevent ID wrapping */
+.kanban-column {
+  min-width: 100px;
+}
+
+@media (max-width: 768px) {
+  /* Toolbar stacking on mobile */
+  .dashboard-toolbar {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .dashboard-toolbar .filter-group {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  /* Ensure touch targets are at least 44px (but not switches) */
+  .dashboard-toolbar button:not([role="switch"]),
+  .dashboard-toolbar [role="combobox"] {
+    min-height: 44px;
+  }
 }

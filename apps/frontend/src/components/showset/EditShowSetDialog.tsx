@@ -4,8 +4,9 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, Pencil, Check } from 'lucide-react';
+import { Loader2, Pencil, Check, ChevronDown, ChevronRight } from 'lucide-react';
 import { showSetsApi, translateApi } from '@/lib/api';
+import { useAuthStore } from '@/stores/auth-store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,7 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import type { Area, ShowSet } from '@unisync/shared-types';
+import type { ShowSet } from '@unisync/shared-types';
 
 interface EditShowSetDialogProps {
   showSet: ShowSet;
@@ -71,6 +72,7 @@ function useDebounce<T>(value: T, delay: number): T {
 export function EditShowSetDialog({ showSet, open, onClose }: EditShowSetDialogProps) {
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
   const currentLang = (i18n.language as LanguageKey) || 'en';
 
   const [isTranslating, setIsTranslating] = useState(false);
@@ -79,6 +81,19 @@ export function EditShowSetDialog({ showSet, open, onClose }: EditShowSetDialogP
     zh: currentLang === 'zh',
     'zh-TW': currentLang === 'zh-TW',
   });
+  const [versionsExpanded, setVersionsExpanded] = useState(false);
+  const [screenVersion, setScreenVersion] = useState(showSet.screenVersion ?? 1);
+  const [revitVersion, setRevitVersion] = useState(showSet.revitVersion ?? 1);
+  const [drawingVersion, setDrawingVersion] = useState(showSet.drawingVersion ?? 1);
+  const [versionReason, setVersionReason] = useState('');
+
+  const canEditVersions = user?.role === 'admin' || user?.canEditVersions;
+
+  // Track if versions have changed
+  const versionsChanged =
+    screenVersion !== (showSet.screenVersion ?? 1) ||
+    revitVersion !== (showSet.revitVersion ?? 1) ||
+    drawingVersion !== (showSet.drawingVersion ?? 1);
 
   const {
     register,
@@ -123,6 +138,11 @@ export function EditShowSetDialog({ showSet, open, onClose }: EditShowSetDialogP
         'zh-TW': currentLang === 'zh-TW',
       });
       setLastTranslatedText(null);
+      // Reset versions
+      setScreenVersion(showSet.screenVersion ?? 1);
+      setRevitVersion(showSet.revitVersion ?? 1);
+      setDrawingVersion(showSet.drawingVersion ?? 1);
+      setVersionReason('');
     }
   }, [open, showSet, reset, currentLang]);
 
@@ -204,8 +224,52 @@ export function EditShowSetDialog({ showSet, open, onClose }: EditShowSetDialogP
     },
   });
 
-  const onSubmit = (data: FormData) => {
-    updateMutation.mutate(data);
+  const versionMutation = useMutation({
+    mutationFn: async (data: { screenVersion: number; revitVersion: number; drawingVersion: number; reason: string }) => {
+      const updates: Promise<void>[] = [];
+      if (data.screenVersion !== (showSet.screenVersion ?? 1)) {
+        updates.push(showSetsApi.updateVersion(showSet.showSetId, {
+          versionType: 'screenVersion',
+          targetVersion: data.screenVersion,
+          reason: data.reason,
+          language: currentLang,
+        }));
+      }
+      if (data.revitVersion !== (showSet.revitVersion ?? 1)) {
+        updates.push(showSetsApi.updateVersion(showSet.showSetId, {
+          versionType: 'revitVersion',
+          targetVersion: data.revitVersion,
+          reason: data.reason,
+          language: currentLang,
+        }));
+      }
+      if (data.drawingVersion !== (showSet.drawingVersion ?? 1)) {
+        updates.push(showSetsApi.updateVersion(showSet.showSetId, {
+          versionType: 'drawingVersion',
+          targetVersion: data.drawingVersion,
+          reason: data.reason,
+          language: currentLang,
+        }));
+      }
+      await Promise.all(updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['showsets'] });
+      setVersionReason('');
+    },
+    onError: (error) => {
+      console.error('Version update failed:', error);
+      alert(`Version update failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    },
+  });
+
+  const onSubmit = async (data: FormData) => {
+    // Save form data first
+    await updateMutation.mutateAsync(data);
+    // Then save version changes if any
+    if (versionsChanged) {
+      await versionMutation.mutateAsync({ screenVersion, revitVersion, drawingVersion, reason: versionReason });
+    }
   };
 
   const toggleOverride = (lang: LanguageKey) => {
@@ -232,7 +296,6 @@ export function EditShowSetDialog({ showSet, open, onClose }: EditShowSetDialogP
     const isCurrentLang = lang === currentLang;
     const isOverridden = overrides[lang];
     const isEditable = isCurrentLang || isOverridden;
-    const fieldValue = watch(config.field);
 
     return (
       <div key={lang} className="space-y-1">
@@ -291,7 +354,7 @@ export function EditShowSetDialog({ showSet, open, onClose }: EditShowSetDialogP
   return (
     <div className="fixed inset-0 z-50 bg-black/50">
       <div
-        className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background rounded-lg shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto"
+        className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background rounded-lg shadow-lg w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden"
       >
         <div className="flex items-center justify-between p-4 border-b">
           <h2 className="text-base font-semibold">{t('showset.details')}</h2>
@@ -303,7 +366,7 @@ export function EditShowSetDialog({ showSet, open, onClose }: EditShowSetDialogP
           )}
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="p-4 space-y-3">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex-1 overflow-y-auto p-4 space-y-3">
           {/* Top row: ID (readonly), Area, Scene */}
           <div className="grid grid-cols-[1fr_auto_auto] gap-2 items-end">
             <div>
@@ -373,19 +436,89 @@ export function EditShowSetDialog({ showSet, open, onClose }: EditShowSetDialogP
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-3 border-t">
-            <Button type="button" variant="outline" size="sm" onClick={handleClose}>
-              {t('common.cancel')}
-            </Button>
-            <Button type="submit" size="sm" disabled={updateMutation.isPending || isTranslating}>
-              {updateMutation.isPending ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t('common.loading')}</>
-              ) : (
-                t('common.save')
+          {/* Versions - only visible if user can edit versions */}
+          {canEditVersions && (
+            <div className="space-y-2 pt-1">
+              <button
+                type="button"
+                className="flex items-center gap-1 text-xs font-medium text-muted-foreground uppercase tracking-wide"
+                onClick={() => setVersionsExpanded(!versionsExpanded)}
+              >
+                {versionsExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                {t('showset.versions')}
+              </button>
+              {versionsExpanded && (
+                <div className="space-y-2 pl-4 border-l-2 border-muted">
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <Label htmlFor="screenVersion" className="text-xs">{t('stages.screen')}</Label>
+                      <Input
+                        id="screenVersion"
+                        type="number"
+                        min={1}
+                        value={screenVersion}
+                        onChange={(e) => setScreenVersion(Math.max(1, parseInt(e.target.value) || 1))}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="revitVersion" className="text-xs">Revit</Label>
+                      <Input
+                        id="revitVersion"
+                        type="number"
+                        min={1}
+                        value={revitVersion}
+                        onChange={(e) => setRevitVersion(Math.max(1, parseInt(e.target.value) || 1))}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="drawingVersion" className="text-xs">{t('stages.drawing2d')}</Label>
+                      <Input
+                        id="drawingVersion"
+                        type="number"
+                        min={1}
+                        value={drawingVersion}
+                        onChange={(e) => setDrawingVersion(Math.max(1, parseInt(e.target.value) || 1))}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                  </div>
+                  {versionsChanged && (
+                    <div>
+                      <Label htmlFor="versionReason" className="text-xs">{t('showset.versionReason')} ({t('common.optional')})</Label>
+                      <Input
+                        id="versionReason"
+                        value={versionReason}
+                        onChange={(e) => setVersionReason(e.target.value)}
+                        placeholder={t('showset.versionReasonPlaceholder')}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                  )}
+                </div>
               )}
-            </Button>
-          </div>
+            </div>
+          )}
+
         </form>
+        <div className="flex justify-end gap-2 p-4 border-t bg-background">
+          <Button type="button" variant="outline" size="sm" onClick={handleClose}>
+            {t('common.cancel')}
+          </Button>
+          <Button
+            type="submit"
+            size="sm"
+            disabled={updateMutation.isPending || versionMutation.isPending || isTranslating}
+            onClick={handleSubmit(onSubmit)}
+          >
+            {(updateMutation.isPending || versionMutation.isPending) ? (
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t('common.loading')}</>
+            ) : (
+              t('common.save')
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   );

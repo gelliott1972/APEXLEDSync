@@ -35,7 +35,7 @@ export type {
   ShowSetAreaGSI,
 } from './showset.js';
 
-export { STAGE_PERMISSIONS, STATUS_COLORS } from './showset.js';
+export { STAGE_PERMISSIONS, STATUS_COLORS, ENGINEER_ALLOWED_STATUSES } from './showset.js';
 
 // Note types
 export type {

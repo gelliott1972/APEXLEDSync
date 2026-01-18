@@ -20,6 +20,7 @@ import type {
   VersionType,
   VersionHistoryEntry,
 } from '@unisync/shared-types';
+import { ENGINEER_ALLOWED_STATUSES } from '@unisync/shared-types';
 import { withAuth, canUpdateStage, canManageLinks, type AuthenticatedHandler } from '../../middleware/authorize.js';
 import {
   success,
@@ -28,7 +29,7 @@ import {
   forbidden,
   internalError,
 } from '../../lib/response.js';
-import { canManageShowSets } from '../../lib/auth.js';
+import { canManageShowSets, isEngineer } from '../../lib/auth.js';
 
 // Schemas
 const localizedStringSchema = z.object({
@@ -69,8 +70,9 @@ const stageUpdateSchema = z.object({
 // Schema for manual version update
 const versionUpdateSchema = z.object({
   versionType: z.enum(['screenVersion', 'revitVersion', 'drawingVersion']),
-  reason: z.string().min(1),
+  reason: z.string().optional().default(''),
   language: z.enum(['en', 'zh', 'zh-TW']),
+  targetVersion: z.number().int().positive().optional(), // If provided, set to this version directly
 });
 
 // Map stage to version type
@@ -215,7 +217,7 @@ const getShowSet: AuthenticatedHandler = async (event) => {
 const createShowSet: AuthenticatedHandler = async (event, auth) => {
   try {
     if (!canManageShowSets(auth.role)) {
-      return forbidden('Only admins and BIM coordinators can create ShowSets');
+      return forbidden('Only admins can create ShowSets');
     }
 
     const body = JSON.parse(event.body ?? '{}');
@@ -283,7 +285,7 @@ const createShowSet: AuthenticatedHandler = async (event, auth) => {
 const updateShowSet: AuthenticatedHandler = async (event, auth) => {
   try {
     if (!canManageShowSets(auth.role)) {
-      return forbidden('Only admins and BIM coordinators can update ShowSets');
+      return forbidden('Only admins can update ShowSet details');
     }
 
     const currentShowSetId = event.pathParameters?.id;
@@ -488,6 +490,11 @@ const updateStage: AuthenticatedHandler = async (event, auth) => {
 
     const { status, assignedTo, version, revisionNote, revisionNoteLang } = parsed.data;
 
+    // Engineers can only approve (complete) or request revision
+    if (isEngineer(auth.role) && !ENGINEER_ALLOWED_STATUSES.includes(status)) {
+      return forbidden('Engineers can only approve (complete) or request revision');
+    }
+
     // Validate revision_required - only valid for certain stages and requires a note
     if (status === 'revision_required') {
       if (!REVISION_STAGES.includes(stageName)) {
@@ -553,6 +560,13 @@ const updateStage: AuthenticatedHandler = async (event, auth) => {
       if (version !== undefined) {
         stageUpdate.version = version;
       }
+    }
+
+    // Save revision note when setting revision_required
+    if (status === 'revision_required' && revisionNote) {
+      stageUpdate.revisionNote = revisionNote;
+      stageUpdate.revisionNoteBy = auth.name;
+      stageUpdate.revisionNoteAt = timestamp;
     }
 
     // Build the update expression
@@ -732,7 +746,7 @@ const updateVersion: AuthenticatedHandler = async (event, auth) => {
       });
     }
 
-    const { versionType, reason, language } = parsed.data;
+    const { versionType, reason, language, targetVersion } = parsed.data;
 
     // Get current showset to check permissions and get current version
     const current = await docClient.send(
@@ -748,8 +762,17 @@ const updateVersion: AuthenticatedHandler = async (event, auth) => {
 
     const currentShowSet = current.Item as ShowSet;
     const currentVersion = currentShowSet[versionType] ?? 1;
-    const newVersion = currentVersion + 1;
+    // Use targetVersion if provided, otherwise increment
+    const newVersion = targetVersion ?? currentVersion + 1;
     const timestamp = now();
+
+    // If version hasn't changed, skip update
+    if (newVersion === currentVersion) {
+      return success({
+        message: 'Version unchanged',
+        [versionType]: currentVersion,
+      });
+    }
 
     // Create version history entry
     const versionHistoryEntry: VersionHistoryEntry = {

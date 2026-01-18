@@ -15,7 +15,8 @@
     "close": "關閉",
     "clear": "清除",
     "error": "錯誤",
-    "success": "成功"
+    "success": "成功",
+    "optional": "可選"
   },
   "nav": {
     "dashboard": "儀表板",
@@ -29,7 +30,13 @@
     "password": "密碼",
     "forgotPassword": "忘記密碼？",
     "welcomeBack": "歡迎回來",
-    "signInToContinue": "登入以繼續使用 UniSync"
+    "signInToContinue": "登入以繼續使用 UniSync",
+    "setNewPassword": "設定新密碼",
+    "newPasswordRequired": "您必須設定新密碼才能繼續。",
+    "newPassword": "新密碼",
+    "confirmPassword": "確認密碼",
+    "setPassword": "設定密碼",
+    "passwordRequirements": "密碼必須至少8個字元，包含大寫字母、小寫字母和數字。"
   },
   "showset": {
     "title": "展示組",
@@ -46,7 +53,11 @@
     "details": "展示組詳情",
     "noShowSets": "未找到展示組",
     "noLinks": "暫無連結",
-    "deleteConfirm": "確定要刪除 {{id}} 嗎？此操作無法撤銷。"
+    "deleteConfirm": "確定要刪除 {{id}} 嗎？此操作無法撤銷。",
+    "versions": "版本",
+    "versionReason": "版本更改原因",
+    "versionReasonPlaceholder": "請描述為什麼要增加版本號...",
+    "versionReasonRequired": "請提供版本更改原因"
   },
   "stages": {
     "screen": "螢幕",
@@ -54,12 +65,14 @@
     "integrated": "整合",
     "inBim360": "在 BIM360",
     "drawing2d": "2D 圖紙",
+    "completed": "完成",
     "short": {
       "screen": "螢幕",
       "structure": "結構",
       "integrated": "整合",
       "inBim360": "BIM",
-      "drawing2d": "2D圖"
+      "drawing2d": "2D圖",
+      "completed": "完成"
     }
   },
   "status": {
@@ -98,7 +111,11 @@
     "finalStageCompleteQuestion": "{{stage}}階段完成了嗎？",
     "nextStageReady": "這將標記為準備進入{{stage}}。",
     "notYet": "還沒有",
-    "yesComplete": "是的，完成"
+    "yesComplete": "是的，完成",
+    "selectStages": "選擇您要處理 {{id}} 的哪些階段。",
+    "noAvailableStages": "沒有可處理的階段。",
+    "finishWorkDescription": "您當前正在處理：{{stages}}",
+    "markComplete": "標記為完成："
   },
   "admin": {
     "title": "管理",
@@ -110,11 +127,14 @@
     "active": "活躍",
     "deactivated": "已停用",
     "canEditVersions": "編輯版本",
-    "canEditVersionsTooltip": "允許使用者手動編輯版本號"
+    "canEditVersionsTooltip": "允許使用者手動編輯版本號",
+    "tempPasswordNote": "臨時密碼將通過電子郵件發送給使用者。首次登入時需要設定新密碼。",
+    "alwaysEnabled": "始終開啟"
   },
   "roles": {
     "admin": "管理員",
     "bim_coordinator": "BIM 協調員",
+    "engineer": "工程師",
     "3d_modeller": "3D 建模師",
     "2d_drafter": "2D 製圖員"
   },
@@ -124,7 +144,13 @@
   },
   "views": {
     "table": "表格",
-    "kanban": "看板"
+    "kanban": "看板",
+    "showVersions": "版本"
+  },
+  "revision": {
+    "description": "請描述 {{stage}} 階段需要進行的修改。",
+    "placeholder": "輸入修改要求...",
+    "submit": "請求修改"
   },
   "errors": {
     "loginFailed": "登入失敗，請檢查您的憑據。",

@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import type { ShowSet, StageStatus, StageName } from '@unisync/shared-types';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { useUIStore } from '@/stores/ui-store';
 
 interface KanbanBoardProps {
   showSets: ShowSet[];
@@ -16,16 +17,6 @@ const COLUMNS: ColumnName[] = ['screen', 'structure', 'integrated', 'inBim360', 
 
 // Status display order within each stage
 const STATUS_ORDER: StageStatus[] = ['not_started', 'in_progress', 'engineer_review', 'client_review', 'revision_required', 'complete', 'on_hold'];
-
-// Valid statuses per stage (for active items - not complete)
-// Note: Only Screen has 'not_started' - other stages start at 'in_progress'
-const STAGE_ACTIVE_STATUSES: Record<StageName, StageStatus[]> = {
-  screen: ['not_started', 'in_progress', 'on_hold'],
-  structure: ['in_progress', 'on_hold'],
-  integrated: ['in_progress', 'engineer_review', 'revision_required', 'on_hold'],
-  inBim360: ['in_progress', 'client_review', 'revision_required', 'on_hold'],
-  drawing2d: ['in_progress', 'engineer_review', 'client_review', 'revision_required', 'on_hold'],
-};
 
 // Valid statuses to show per column (active + complete for stages, only complete for completed column)
 // Note: Only Screen has 'not_started' - other stages start at 'in_progress'
@@ -108,6 +99,7 @@ function groupByColumnAndStatus(showSets: ShowSet[]): Record<ColumnName, Record<
       in_progress: [],
       engineer_review: [],
       client_review: [],
+      revision_required: [],
       complete: [],
       on_hold: [],
     };
@@ -169,22 +161,25 @@ function KanbanCard({
   onClick: () => void;
 }) {
   const { t, i18n } = useTranslation();
+  const { showVersionNumbers } = useUIStore();
   const lang = i18n.language as 'en' | 'zh' | 'zh-TW';
   const description = showSet.description[lang] || showSet.description.en;
   const displayVersion = getDisplayVersion(showSet);
-  const showVersion = displayVersion > 1;
+
+  // Strip "SS-" prefix for compact display
+  const compactId = showSet.showSetId.replace(/^SS-/, '');
 
   return (
     <div
       className={cn(
-        'group relative px-2 py-0.5 rounded border cursor-pointer transition-colors flex items-center justify-center gap-1',
+        'group relative px-1.5 py-1 rounded border cursor-pointer transition-colors',
         cardColors[status]
       )}
       onClick={onClick}
     >
-      <span className="text-sm font-medium kanban-text">{showSet.showSetId}</span>
-      {showVersion && (
-        <span className="text-xs opacity-70 kanban-text">(v{displayVersion})</span>
+      <div className="text-sm font-medium kanban-text text-center whitespace-nowrap">{compactId}</div>
+      {showVersionNumbers && (
+        <div className="text-xs opacity-70 kanban-text text-right">v{displayVersion}</div>
       )}
 
       {/* Hover tooltip with version details */}
@@ -237,8 +232,8 @@ function StatusGroup({
   }
 
   return (
-    <div className="mb-2">
-      <div className={cn('text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded mb-1 inline-block', statusColors[status])}>
+    <div className="mb-1.5">
+      <div className={cn('text-[10px] uppercase font-semibold px-1 py-0.5 rounded mb-1 inline-block', statusColors[status])}>
         <span className="kanban-text">{t(`status.${status}`)} ({showSets.length})</span>
       </div>
       <div className="grid grid-cols-2 gap-1">
@@ -274,49 +269,52 @@ export function KanbanBoard({ showSets, onSelect }: KanbanBoardProps) {
   };
 
   return (
-    <div className="flex flex-col min-w-[1100px]">
-      {/* Column Headers */}
-      <div className="grid grid-cols-6 gap-2 mb-2">
-        {COLUMNS.map((column) => (
-          <div
-            key={column}
-            className={cn(
-              'px-3 py-2 rounded-t-lg border border-b-0 border-t-4 bg-muted/50 text-center',
-              columnColors[column]
-            )}
-          >
-            <div className="font-medium text-sm">{getColumnTitle(column)}</div>
-            <Badge variant="secondary" className="text-xs mt-1">
-              {columnCounts[column]}
-            </Badge>
-          </div>
-        ))}
-      </div>
+    <div className="flex-1 min-h-0 overflow-auto scrollbar-thin">
+      {/* min-width ensures columns don't shrink so much that IDs wrap */}
+      <div className="min-w-[680px]">
+        {/* Column Headers - sticky at top */}
+        <div className="grid grid-cols-6 gap-1.5 mb-1.5 sticky top-0 z-10">
+          {COLUMNS.map((column) => (
+            <div
+              key={column}
+              className={cn(
+                'kanban-column px-2 py-1.5 rounded-t-lg border border-b-0 border-t-4 bg-muted/50 text-center',
+                columnColors[column]
+              )}
+            >
+              <div className="font-medium text-sm whitespace-nowrap">{getColumnTitle(column)}</div>
+              <Badge variant="secondary" className="text-xs mt-1">
+                {columnCounts[column]}
+              </Badge>
+            </div>
+          ))}
+        </div>
 
-      {/* Columns */}
-      <div className="grid grid-cols-6 gap-2">
-        {COLUMNS.map((column) => (
-          <div
-            key={column}
-            className="rounded-b-lg border bg-muted/20 p-2 min-h-[200px]"
-          >
-            {STATUS_ORDER.map((status) => (
-              <StatusGroup
-                key={status}
-                column={column}
-                status={status}
-                showSets={grouped[column][status]}
-                onSelect={onSelect}
-                t={t}
-              />
-            ))}
-            {columnCounts[column] === 0 && (
-              <div className="text-xs text-muted-foreground text-center py-4">
-                —
-              </div>
-            )}
-          </div>
-        ))}
+        {/* Columns */}
+        <div className="grid grid-cols-6 gap-1.5">
+          {COLUMNS.map((column) => (
+            <div
+              key={column}
+              className="kanban-column rounded-b-lg border bg-muted/20 p-1.5"
+            >
+              {STATUS_ORDER.map((status) => (
+                <StatusGroup
+                  key={status}
+                  column={column}
+                  status={status}
+                  showSets={grouped[column][status]}
+                  onSelect={onSelect}
+                  t={t}
+                />
+              ))}
+              {columnCounts[column] === 0 && (
+                <div className="text-xs text-muted-foreground text-center py-4">
+                  —
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { X, ExternalLink, Pencil, Trash2, ChevronDown, ChevronRight, Circle, CheckCircle2, Pause, Eye, UserCheck, AlertTriangle } from 'lucide-react';
-import type { ShowSet, StageName, StageStatus } from '@unisync/shared-types';
+import { X, ExternalLink, Pencil, Trash2, ChevronDown, ChevronRight, Circle, CheckCircle2, Pause, Eye, UserCheck, AlertTriangle, Send } from 'lucide-react';
+import type { ShowSet, StageName, StageStatus, StageUpdateInput } from '@unisync/shared-types';
 import { showSetsApi, notesApi } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
-import { STAGE_PERMISSIONS } from '@unisync/shared-types';
+import { STAGE_PERMISSIONS, ENGINEER_ALLOWED_STATUSES } from '@unisync/shared-types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -15,6 +16,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +34,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { NoteList } from '@/components/notes/NoteList';
 import { EditShowSetDialog } from './EditShowSetDialog';
 
@@ -63,6 +78,11 @@ export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: Sho
   const [stagesExpanded, setStagesExpanded] = useState(!notesOnly);
   const [notesExpanded, setNotesExpanded] = useState(true);
 
+  // Revision dialog state
+  const [revisionDialogOpen, setRevisionDialogOpen] = useState(false);
+  const [revisionStage, setRevisionStage] = useState<StageName | null>(null);
+  const [revisionNote, setRevisionNote] = useState('');
+
   const { data: notes = [] } = useQuery({
     queryKey: ['notes', showSet.showSetId],
     queryFn: () => notesApi.list(showSet.showSetId),
@@ -70,39 +90,81 @@ export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: Sho
   });
 
   const updateStageMutation = useMutation({
-    mutationFn: ({ stage, status }: { stage: StageName; status: StageStatus }) =>
-      showSetsApi.updateStage(showSet.showSetId, stage, { status }),
-    onMutate: async ({ stage, status }) => {
-      // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['showsets'] });
-      // Snapshot previous value
-      const previous = queryClient.getQueryData(['showsets']);
-      // Optimistically update
-      queryClient.setQueryData(['showsets'], (old: ShowSet[] | undefined) =>
-        old?.map((s) =>
-          s.showSetId === showSet.showSetId
-            ? {
-                ...s,
-                stages: {
-                  ...s.stages,
-                  [stage]: { ...s.stages[stage], status },
-                },
-              }
-            : s
-        )
+    mutationFn: ({ stage, input }: { stage: StageName; input: StageUpdateInput }) =>
+      showSetsApi.updateStage(showSet.showSetId, stage, input),
+    onMutate: async ({ stage, input }) => {
+      // Cancel outgoing refetches for all showsets queries (with or without area filter)
+      await queryClient.cancelQueries({ queryKey: ['showsets'], exact: false });
+
+      // Snapshot all showsets queries
+      const previousQueries = queryClient.getQueriesData<ShowSet[]>({ queryKey: ['showsets'] });
+
+      // Optimistically update all showsets queries
+      queryClient.setQueriesData<ShowSet[]>(
+        { queryKey: ['showsets'] },
+        (old) =>
+          old?.map((s) =>
+            s.showSetId === showSet.showSetId
+              ? {
+                  ...s,
+                  stages: {
+                    ...s.stages,
+                    [stage]: { ...s.stages[stage], status: input.status },
+                  },
+                }
+              : s
+          )
       );
-      return { previous };
+      return { previousQueries };
     },
     onError: (_err, _variables, context) => {
-      // Rollback on error
-      if (context?.previous) {
-        queryClient.setQueryData(['showsets'], context.previous);
+      // Rollback all queries on error
+      if (context?.previousQueries) {
+        context.previousQueries.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
       }
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['showsets'] });
     },
   });
+
+  // Handle status change - open revision dialog if revision_required selected
+  const handleStatusChange = (stage: StageName, newStatus: StageStatus) => {
+    if (newStatus === 'revision_required') {
+      setRevisionStage(stage);
+      setRevisionNote('');
+      setRevisionDialogOpen(true);
+    } else {
+      updateStageMutation.mutate({ stage, input: { status: newStatus } });
+    }
+  };
+
+  // Submit revision with note
+  const handleRevisionSubmit = () => {
+    if (!revisionStage || !revisionNote.trim()) return;
+
+    const lang = i18n.language as 'en' | 'zh' | 'zh-TW';
+    updateStageMutation.mutate({
+      stage: revisionStage,
+      input: {
+        status: 'revision_required',
+        revisionNote: revisionNote.trim(),
+        revisionNoteLang: lang,
+      },
+    });
+    setRevisionDialogOpen(false);
+    setRevisionStage(null);
+    setRevisionNote('');
+  };
+
+  // Cancel revision dialog
+  const handleRevisionCancel = () => {
+    setRevisionDialogOpen(false);
+    setRevisionStage(null);
+    setRevisionNote('');
+  };
 
   const deleteMutation = useMutation({
     mutationFn: () => showSetsApi.delete(showSet.showSetId),
@@ -115,6 +177,16 @@ export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: Sho
   const canUpdateStage = (stage: StageName) => {
     if (!user) return false;
     return STAGE_PERMISSIONS[user.role]?.includes(stage) ?? false;
+  };
+
+  // Get allowed statuses for a stage based on user role
+  // Engineers can only approve (complete) or request revision
+  const getAllowedStatuses = (stage: StageName): StageStatus[] => {
+    const baseStatuses = STAGE_STATUSES[stage];
+    if (user?.role === 'engineer') {
+      return baseStatuses.filter((s) => ENGINEER_ALLOWED_STATUSES.includes(s));
+    }
+    return baseStatuses;
   };
 
   const canEdit = user?.role === 'admin' || user?.role === 'bim_coordinator';
@@ -246,6 +318,18 @@ export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: Sho
                 const canEdit = canUpdateStage(stage);
                 const isLast = index === STAGES.length - 1;
 
+                // Format date for tooltip
+                const formatDate = (dateStr: string) => {
+                  try {
+                    return new Date(dateStr).toLocaleString(i18n.language, {
+                      dateStyle: 'medium',
+                      timeStyle: 'short',
+                    });
+                  } catch {
+                    return dateStr;
+                  }
+                };
+
                 // Status icon and color
                 const getStatusIcon = () => {
                   switch (status) {
@@ -258,6 +342,26 @@ export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: Sho
                     case 'client_review':
                       return <Eye className="h-5 w-5 text-blue-500" />;
                     case 'revision_required':
+                      // Show tooltip with revision note if available
+                      if (stageInfo.revisionNote) {
+                        return (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <AlertTriangle className="h-5 w-5 text-amber-500 cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent side="right" className="max-w-xs bg-amber-50 text-amber-900 border-amber-200">
+                                <div className="space-y-1">
+                                  <p className="font-medium">{stageInfo.revisionNote}</p>
+                                  <p className="text-xs opacity-75">
+                                    {stageInfo.revisionNoteBy} - {stageInfo.revisionNoteAt && formatDate(stageInfo.revisionNoteAt)}
+                                  </p>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        );
+                      }
                       return <AlertTriangle className="h-5 w-5 text-amber-500" />;
                     case 'on_hold':
                       return <Pause className="h-5 w-5 text-red-500" />;
@@ -282,18 +386,13 @@ export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: Sho
                       {canEdit ? (
                         <Select
                           value={status}
-                          onValueChange={(value) =>
-                            updateStageMutation.mutate({
-                              stage,
-                              status: value as StageStatus,
-                            })
-                          }
+                          onValueChange={(value) => handleStatusChange(stage, value as StageStatus)}
                         >
                           <SelectTrigger className="w-36 h-7 text-xs">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            {STAGE_STATUSES[stage].map((s) => (
+                            {getAllowedStatuses(stage).map((s) => (
                               <SelectItem key={s} value={s}>
                                 {t(`status.${s}`)}
                               </SelectItem>
@@ -354,6 +453,39 @@ export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: Sho
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Revision Required Dialog */}
+      <Dialog open={revisionDialogOpen} onOpenChange={(open) => !open && handleRevisionCancel()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('status.revision_required')}</DialogTitle>
+            <DialogDescription>
+              {t('revision.description', { stage: revisionStage ? t(`stages.${revisionStage}`) : '' })}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Textarea
+              placeholder={t('revision.placeholder')}
+              value={revisionNote}
+              onChange={(e) => setRevisionNote(e.target.value)}
+              rows={4}
+              className="resize-none"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleRevisionCancel}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              onClick={handleRevisionSubmit}
+              disabled={!revisionNote.trim() || updateStageMutation.isPending}
+            >
+              <Send className="h-4 w-4 mr-2" />
+              {updateStageMutation.isPending ? t('common.loading') : t('revision.submit')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

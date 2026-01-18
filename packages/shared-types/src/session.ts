@@ -1,7 +1,10 @@
+import type { StageName } from './showset.js';
+
 export interface Session {
   userId: string;
   userName: string;
   showSetId: string | null;
+  workingStages: StageName[];
   activity: string;
   startedAt: string;
   lastHeartbeat: string;
@@ -10,6 +13,7 @@ export interface Session {
 
 export interface SessionStartInput {
   showSetId?: string;
+  workingStages?: StageName[];
   activity: string;
 }
 

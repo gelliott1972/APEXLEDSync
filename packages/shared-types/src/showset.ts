@@ -9,6 +9,14 @@ export type StageName =
   | 'inBim360'
   | 'drawing2d';
 
+export const STAGE_NAMES: StageName[] = [
+  'screen',
+  'structure',
+  'integrated',
+  'inBim360',
+  'drawing2d',
+];
+
 export interface LocalizedString {
   en: string;
   zh: string;
@@ -26,12 +34,20 @@ export interface StageInfo {
   updatedBy: string;
   updatedAt: string;
   version?: string;
+  // Revision note (set when status = revision_required)
+  revisionNote?: string;
+  revisionNoteBy?: string;
+  revisionNoteAt?: string;
 }
 
 export interface StageInfoSimple {
   status: StageStatus;
   updatedBy: string;
   updatedAt: string;
+  // Revision note (set when status = revision_required)
+  revisionNote?: string;
+  revisionNoteBy?: string;
+  revisionNoteAt?: string;
 }
 
 export interface ShowSetStages {
@@ -96,6 +112,8 @@ export interface StageUpdateInput {
   status: StageStatus;
   assignedTo?: string | null;
   version?: string;
+  revisionNote?: string;
+  revisionNoteLang?: 'en' | 'zh' | 'zh-TW';
 }
 
 export interface LinksUpdateInput {
@@ -118,9 +136,13 @@ export interface ShowSetAreaGSI {
 export const STAGE_PERMISSIONS: Record<string, StageName[]> = {
   admin: ['screen', 'structure', 'integrated', 'inBim360', 'drawing2d'],
   bim_coordinator: ['screen', 'structure', 'integrated', 'inBim360', 'drawing2d'],
+  engineer: ['screen', 'structure', 'integrated', 'inBim360', 'drawing2d'], // Can only approve/reject, not work
   '3d_modeller': ['screen', 'structure', 'integrated'],
   '2d_drafter': ['drawing2d'],
 };
+
+// Engineer can only set these statuses (approval-only role)
+export const ENGINEER_ALLOWED_STATUSES: StageStatus[] = ['complete', 'revision_required'];
 
 // Status colors for UI
 export const STATUS_COLORS: Record<StageStatus, string> = {
