@@ -1,10 +1,11 @@
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, FileEdit } from 'lucide-react';
 import { usersApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 
 export function AdminPage() {
   const { t } = useTranslation();
@@ -17,6 +18,14 @@ export function AdminPage() {
 
   const deactivateMutation = useMutation({
     mutationFn: (userId: string) => usersApi.delete(userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
+
+  const toggleVersionEditMutation = useMutation({
+    mutationFn: ({ userId, canEditVersions }: { userId: string; canEditVersions: boolean }) =>
+      usersApi.update(userId, { canEditVersions }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
     },
@@ -61,6 +70,12 @@ export function AdminPage() {
                     <th className="px-4 py-3 text-left">{t('auth.email')}</th>
                     <th className="px-4 py-3 text-left">{t('admin.role')}</th>
                     <th className="px-4 py-3 text-left">{t('admin.status')}</th>
+                    <th className="px-4 py-3 text-center" title={t('admin.canEditVersionsTooltip')}>
+                      <div className="flex items-center justify-center gap-1">
+                        <FileEdit className="h-4 w-4" />
+                        <span className="hidden sm:inline">{t('admin.canEditVersions')}</span>
+                      </div>
+                    </th>
                     <th className="px-4 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -82,6 +97,22 @@ export function AdminPage() {
                         >
                           {t(`admin.${user.status}`)}
                         </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <Switch
+                          checked={user.canEditVersions ?? false}
+                          onCheckedChange={(checked) =>
+                            toggleVersionEditMutation.mutate({
+                              userId: user.userId,
+                              canEditVersions: checked,
+                            })
+                          }
+                          disabled={
+                            toggleVersionEditMutation.isPending ||
+                            user.status === 'deactivated' ||
+                            user.role === 'admin' // Admins always have permission
+                          }
+                        />
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-2">

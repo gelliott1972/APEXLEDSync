@@ -75,9 +75,16 @@
     "title": "备注",
     "addNote": "添加备注",
     "noNotes": "暂无备注",
+    "noRevisionNotes": "暂无修改备注",
+    "filterRevision": "筛选修改备注",
     "translating": "翻译中...",
     "translationFailed": "翻译失败",
-    "viewOriginal": "查看原文"
+    "viewOriginal": "查看原文",
+    "attachFile": "附加文件",
+    "uploading": "上传中...",
+    "uploadFailed": "上传失败，请重试。",
+    "invalidFileType": "文件类型无效。请上传PDF或图片。",
+    "fileTooLarge": "文件太大。最大支持50MB。"
   },
   "sessions": {
     "title": "活动会话",
@@ -101,7 +108,9 @@
     "role": "角色",
     "status": "状态",
     "active": "活跃",
-    "deactivated": "已停用"
+    "deactivated": "已停用",
+    "canEditVersions": "编辑版本",
+    "canEditVersionsTooltip": "允许用户手动编辑版本号"
   },
   "roles": {
     "admin": "管理员",

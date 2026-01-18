@@ -29,6 +29,7 @@ export interface UserUpdateInput {
   role?: UserRole;
   preferredLang?: Language;
   status?: UserStatus;
+  canEditVersions?: boolean;
 }
 
 export interface ProfileUpdateInput {

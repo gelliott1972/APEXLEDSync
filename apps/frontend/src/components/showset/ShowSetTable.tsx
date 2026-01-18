@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Square, Play, MessageSquare, Pause, UserCheck } from 'lucide-react';
+import { Square, Play, MessageSquare, Pause, UserCheck, AlertTriangle } from 'lucide-react';
 import type { ShowSet, StageName } from '@unisync/shared-types';
 import { showSetsApi } from '@/lib/api';
 import { useSessionStore } from '@/stores/session-store';
@@ -31,6 +31,22 @@ function getCurrentStage(showSet: ShowSet): StageName {
     }
   }
   return 'drawing2d';
+}
+
+// Get the relevant version for a stage
+function getVersionForStage(showSet: ShowSet, stage: StageName): number {
+  switch (stage) {
+    case 'screen':
+      return showSet.screenVersion ?? 1;
+    case 'structure':
+    case 'integrated':
+    case 'inBim360':
+      return showSet.revitVersion ?? 1;
+    case 'drawing2d':
+      return showSet.drawingVersion ?? 1;
+    default:
+      return 1;
+  }
 }
 
 export function ShowSetTable({ showSets, onSelect, onSelectNotes }: ShowSetTableProps) {
@@ -166,18 +182,22 @@ export function ShowSetTable({ showSets, onSelect, onSelectNotes }: ShowSetTable
               <td className="px-3 py-3 truncate">{getDescription(showSet)}</td>
               {STAGES.map((stage) => {
                 const status = showSet.stages[stage].status;
+                const version = getVersionForStage(showSet, stage);
+                const showVersion = status !== 'not_started' && version > 1;
                 return (
                   <td key={stage} className="px-2 py-3 text-center">
                     <Badge
                       variant={status as any}
                       className="text-xs w-full justify-center py-1.5"
+                      title={`v${version}`}
                     >
                       {status === 'not_started' && '—'}
-                      {status === 'in_progress' && 'WIP'}
-                      {status === 'complete' && '✓'}
+                      {status === 'in_progress' && (showVersion ? `WIP v${version}` : 'WIP')}
+                      {status === 'complete' && (showVersion ? `✓ v${version}` : '✓')}
                       {status === 'on_hold' && <Pause className="h-4 w-4" />}
                       {status === 'client_review' && <UserCheck className="h-4 w-4" />}
                       {status === 'engineer_review' && <UserCheck className="h-4 w-4" />}
+                      {status === 'revision_required' && <AlertTriangle className="h-4 w-4" />}
                     </Badge>
                   </td>
                 );

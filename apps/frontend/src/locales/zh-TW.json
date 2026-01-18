@@ -75,9 +75,16 @@
     "title": "備註",
     "addNote": "新增備註",
     "noNotes": "暫無備註",
+    "noRevisionNotes": "暫無修改備註",
+    "filterRevision": "篩選修改備註",
     "translating": "翻譯中...",
     "translationFailed": "翻譯失敗",
-    "viewOriginal": "檢視原文"
+    "viewOriginal": "檢視原文",
+    "attachFile": "附加檔案",
+    "uploading": "上傳中...",
+    "uploadFailed": "上傳失敗，請重試。",
+    "invalidFileType": "檔案類型無效。請上傳PDF或圖片。",
+    "fileTooLarge": "檔案太大。最大支援50MB。"
   },
   "sessions": {
     "title": "活動工作階段",
@@ -101,7 +108,9 @@
     "role": "角色",
     "status": "狀態",
     "active": "活躍",
-    "deactivated": "已停用"
+    "deactivated": "已停用",
+    "canEditVersions": "編輯版本",
+    "canEditVersionsTooltip": "允許使用者手動編輯版本號"
   },
   "roles": {
     "admin": "管理員",

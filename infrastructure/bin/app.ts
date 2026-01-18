@@ -5,6 +5,7 @@ import { AuthStack } from '../lib/auth-stack.js';
 import { ApiStack } from '../lib/api-stack.js';
 import { FrontendStack } from '../lib/frontend-stack.js';
 import { TranslationStack } from '../lib/translation-stack.js';
+import { StorageStack } from '../lib/storage-stack.js';
 
 const app = new cdk.App();
 
@@ -32,6 +33,12 @@ const translationStack = new TranslationStack(app, 'UnisyncTranslationStack', {
   notesTable: databaseStack.notesTable,
 });
 
+// Storage stack - S3 bucket for attachments
+const storageStack = new StorageStack(app, 'UnisyncStorageStack', {
+  env,
+  description: 'UniSync file storage',
+});
+
 // API stack - API Gateway and Lambda functions
 const apiStack = new ApiStack(app, 'UnisyncApiStack', {
   env,
@@ -44,6 +51,7 @@ const apiStack = new ApiStack(app, 'UnisyncApiStack', {
   userPool: authStack.userPool,
   userPoolClient: authStack.userPoolClient,
   translationQueue: translationStack.translationQueue,
+  attachmentsBucket: storageStack.attachmentsBucket,
 });
 
 // Frontend stack - S3 and CloudFront

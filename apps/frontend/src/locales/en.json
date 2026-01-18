@@ -75,9 +75,16 @@
     "title": "Notes",
     "addNote": "Add Note",
     "noNotes": "No notes yet",
+    "noRevisionNotes": "No revision notes",
+    "filterRevision": "Filter revision notes",
     "translating": "Translating...",
     "translationFailed": "Translation failed",
-    "viewOriginal": "View Original"
+    "viewOriginal": "View Original",
+    "attachFile": "Attach File",
+    "uploading": "Uploading...",
+    "uploadFailed": "Upload failed. Please try again.",
+    "invalidFileType": "Invalid file type. Please upload a PDF or image.",
+    "fileTooLarge": "File too large. Maximum size is 50MB."
   },
   "sessions": {
     "title": "Active Sessions",
@@ -101,7 +108,9 @@
     "role": "Role",
     "status": "Status",
     "active": "Active",
-    "deactivated": "Deactivated"
+    "deactivated": "Deactivated",
+    "canEditVersions": "Edit Ver.",
+    "canEditVersionsTooltip": "Allow user to manually edit version numbers"
   },
   "roles": {
     "admin": "Admin",

@@ -17,6 +17,8 @@ import type {
   LocalizedString,
   VMItem,
   ShowSetStages,
+  VersionType,
+  VersionHistoryEntry,
 } from '@unisync/shared-types';
 import { withAuth, canUpdateStage, canManageLinks, type AuthenticatedHandler } from '../../middleware/authorize.js';
 import {
@@ -57,10 +59,38 @@ const updateShowSetSchema = z.object({
 });
 
 const stageUpdateSchema = z.object({
-  status: z.enum(['not_started', 'in_progress', 'complete', 'on_hold', 'client_review', 'engineer_review']),
+  status: z.enum(['not_started', 'in_progress', 'complete', 'on_hold', 'client_review', 'engineer_review', 'revision_required']),
   assignedTo: z.string().nullable().optional(),
   version: z.string().optional(),
+  revisionNote: z.string().optional(), // Required when setting revision_required
+  revisionNoteLang: z.enum(['en', 'zh', 'zh-TW']).optional(),
 });
+
+// Schema for manual version update
+const versionUpdateSchema = z.object({
+  versionType: z.enum(['screenVersion', 'revitVersion', 'drawingVersion']),
+  reason: z.string().min(1),
+  language: z.enum(['en', 'zh', 'zh-TW']),
+});
+
+// Map stage to version type
+function getVersionTypeForStage(stage: StageName): VersionType | null {
+  switch (stage) {
+    case 'screen':
+      return 'screenVersion';
+    case 'structure':
+    case 'integrated':
+    case 'inBim360':
+      return 'revitVersion';
+    case 'drawing2d':
+      return 'drawingVersion';
+    default:
+      return null;
+  }
+}
+
+// Stages that support revision_required
+const REVISION_STAGES: StageName[] = ['integrated', 'inBim360', 'drawing2d'];
 
 const linksUpdateSchema = z.object({
   modelUrl: z.string().url().nullable().optional(),
@@ -225,6 +255,11 @@ const createShowSet: AuthenticatedHandler = async (event, auth) => {
         modelUrl: null,
         drawingsUrl: null,
       },
+      // Version tracking - initialize to v1
+      screenVersion: 1,
+      revitVersion: 1,
+      drawingVersion: 1,
+      versionHistory: [],
       createdAt: timestamp,
       updatedAt: timestamp,
     };
@@ -433,7 +468,7 @@ const updateStage: AuthenticatedHandler = async (event, auth) => {
       return validationError('ShowSet ID and stage name are required');
     }
 
-    const validStages: StageName[] = ['screen', 'structure', 'integrated', 'inBim360', 'awaitingClient', 'drawing2d'];
+    const validStages: StageName[] = ['screen', 'structure', 'integrated', 'inBim360', 'drawing2d'];
     if (!validStages.includes(stageName)) {
       return validationError('Invalid stage name');
     }
@@ -451,9 +486,19 @@ const updateStage: AuthenticatedHandler = async (event, auth) => {
       });
     }
 
-    const { status, assignedTo, version } = parsed.data;
+    const { status, assignedTo, version, revisionNote, revisionNoteLang } = parsed.data;
 
-    // Get current state for activity logging
+    // Validate revision_required - only valid for certain stages and requires a note
+    if (status === 'revision_required') {
+      if (!REVISION_STAGES.includes(stageName)) {
+        return validationError('revision_required status is only valid for Integrated, InBim360, and Drawing2d stages');
+      }
+      if (!revisionNote || !revisionNoteLang) {
+        return validationError('A revision note is required when setting revision_required status');
+      }
+    }
+
+    // Get current state for activity logging and version tracking
     const current = await docClient.send(
       new GetCommand({
         TableName: TABLE_NAMES.SHOWSETS,
@@ -465,8 +510,34 @@ const updateStage: AuthenticatedHandler = async (event, auth) => {
       return notFound('ShowSet');
     }
 
-    const currentStage = (current.Item as ShowSet).stages[stageName];
+    const currentShowSet = current.Item as ShowSet;
+    const currentStage = currentShowSet.stages[stageName];
     const timestamp = now();
+
+    // Check if this is a revision_required -> in_progress transition (version bump)
+    const isRevisionToInProgress = currentStage.status === 'revision_required' && status === 'in_progress';
+    const versionType = getVersionTypeForStage(stageName);
+    let newVersion: number | undefined;
+    let versionHistoryEntry: VersionHistoryEntry | undefined;
+
+    if (isRevisionToInProgress && versionType) {
+      // Auto-increment the version
+      newVersion = (currentShowSet[versionType] ?? 1) + 1;
+
+      // Create version history entry (will be populated with translated reason later)
+      versionHistoryEntry = {
+        id: generateId(),
+        versionType,
+        version: newVersion,
+        reason: {
+          en: '',
+          zh: '',
+          'zh-TW': '',
+        },
+        createdAt: timestamp,
+        createdBy: auth.userId,
+      };
+    }
 
     const stageUpdate: Record<string, unknown> = {
       status,
@@ -484,19 +555,38 @@ const updateStage: AuthenticatedHandler = async (event, auth) => {
       }
     }
 
+    // Build the update expression
+    let updateExpression = 'SET stages.#stage = :stageUpdate, #updatedAt = :updatedAt';
+    const expressionAttributeNames: Record<string, string> = {
+      '#stage': stageName,
+      '#updatedAt': 'updatedAt',
+    };
+    const expressionAttributeValues: Record<string, unknown> = {
+      ':stageUpdate': stageUpdate,
+      ':updatedAt': timestamp,
+    };
+
+    // Add version increment if needed
+    if (newVersion !== undefined && versionType) {
+      updateExpression += `, #versionType = :newVersion`;
+      expressionAttributeNames['#versionType'] = versionType;
+      expressionAttributeValues[':newVersion'] = newVersion;
+    }
+
+    // Add version history entry if needed
+    if (versionHistoryEntry) {
+      updateExpression += `, versionHistory = list_append(if_not_exists(versionHistory, :emptyList), :historyEntry)`;
+      expressionAttributeValues[':emptyList'] = [];
+      expressionAttributeValues[':historyEntry'] = [versionHistoryEntry];
+    }
+
     await docClient.send(
       new UpdateCommand({
         TableName: TABLE_NAMES.SHOWSETS,
         Key: keys.showSet(showSetId),
-        UpdateExpression: 'SET stages.#stage = :stageUpdate, #updatedAt = :updatedAt',
-        ExpressionAttributeNames: {
-          '#stage': stageName,
-          '#updatedAt': 'updatedAt',
-        },
-        ExpressionAttributeValues: {
-          ':stageUpdate': stageUpdate,
-          ':updatedAt': timestamp,
-        },
+        UpdateExpression: updateExpression,
+        ExpressionAttributeNames: expressionAttributeNames,
+        ExpressionAttributeValues: expressionAttributeValues,
       })
     );
 
@@ -522,6 +612,17 @@ const updateStage: AuthenticatedHandler = async (event, auth) => {
       await logActivity(showSetId, auth.userId, auth.name, 'version_update', {
         stage: stageName,
         version,
+      });
+    }
+
+    // Log version bump activity
+    if (newVersion !== undefined && versionType) {
+      await logActivity(showSetId, auth.userId, auth.name, 'version_bump', {
+        versionType,
+        from: currentShowSet[versionType] ?? 1,
+        to: newVersion,
+        trigger: 'revision_required',
+        historyEntryId: versionHistoryEntry?.id,
       });
     }
 
@@ -614,6 +715,93 @@ const updateLinks: AuthenticatedHandler = async (event, auth) => {
   }
 };
 
+// Manual version update - requires canEditVersions permission
+const updateVersion: AuthenticatedHandler = async (event, auth) => {
+  try {
+    const showSetId = event.pathParameters?.id;
+    if (!showSetId) {
+      return validationError('ShowSet ID is required');
+    }
+
+    const body = JSON.parse(event.body ?? '{}');
+    const parsed = versionUpdateSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return validationError('Invalid request body', {
+        details: parsed.error.message,
+      });
+    }
+
+    const { versionType, reason, language } = parsed.data;
+
+    // Get current showset to check permissions and get current version
+    const current = await docClient.send(
+      new GetCommand({
+        TableName: TABLE_NAMES.SHOWSETS,
+        Key: keys.showSet(showSetId),
+      })
+    );
+
+    if (!current.Item) {
+      return notFound('ShowSet');
+    }
+
+    const currentShowSet = current.Item as ShowSet;
+    const currentVersion = currentShowSet[versionType] ?? 1;
+    const newVersion = currentVersion + 1;
+    const timestamp = now();
+
+    // Create version history entry
+    const versionHistoryEntry: VersionHistoryEntry = {
+      id: generateId(),
+      versionType,
+      version: newVersion,
+      reason: {
+        en: language === 'en' ? reason : '',
+        zh: language === 'zh' ? reason : '',
+        'zh-TW': language === 'zh-TW' ? reason : '',
+      },
+      createdAt: timestamp,
+      createdBy: auth.userId,
+    };
+
+    await docClient.send(
+      new UpdateCommand({
+        TableName: TABLE_NAMES.SHOWSETS,
+        Key: keys.showSet(showSetId),
+        UpdateExpression: `SET #versionType = :newVersion, #updatedAt = :updatedAt, versionHistory = list_append(if_not_exists(versionHistory, :emptyList), :historyEntry)`,
+        ExpressionAttributeNames: {
+          '#versionType': versionType,
+          '#updatedAt': 'updatedAt',
+        },
+        ExpressionAttributeValues: {
+          ':newVersion': newVersion,
+          ':updatedAt': timestamp,
+          ':emptyList': [],
+          ':historyEntry': [versionHistoryEntry],
+        },
+      })
+    );
+
+    // Log version update activity
+    await logActivity(showSetId, auth.userId, auth.name, 'version_manual', {
+      versionType,
+      from: currentVersion,
+      to: newVersion,
+      historyEntryId: versionHistoryEntry.id,
+    });
+
+    return success({
+      message: 'Version updated successfully',
+      [versionType]: newVersion,
+      historyEntryId: versionHistoryEntry.id,
+    });
+  } catch (err) {
+    console.error('Error updating version:', err);
+    return internalError();
+  }
+};
+
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
@@ -638,6 +826,8 @@ export const handler = async (
       return wrappedHandler(updateStage);
     case 'PUT /showsets/{id}/links':
       return wrappedHandler(updateLinks);
+    case 'PUT /showsets/{id}/version':
+      return wrappedHandler(updateVersion);
     default:
       return validationError('Unknown endpoint');
   }

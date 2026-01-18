@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { X, ExternalLink, Pencil, Trash2, ChevronDown, ChevronRight, Circle, CheckCircle2, Pause, Eye, UserCheck } from 'lucide-react';
+import { X, ExternalLink, Pencil, Trash2, ChevronDown, ChevronRight, Circle, CheckCircle2, Pause, Eye, UserCheck, AlertTriangle } from 'lucide-react';
 import type { ShowSet, StageName, StageStatus } from '@unisync/shared-types';
 import { showSetsApi, notesApi } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
@@ -47,9 +47,9 @@ const STAGES: StageName[] = [
 const STAGE_STATUSES: Record<StageName, StageStatus[]> = {
   screen: ['not_started', 'in_progress', 'complete', 'on_hold'],
   structure: ['not_started', 'in_progress', 'complete', 'on_hold'],
-  integrated: ['not_started', 'in_progress', 'engineer_review', 'complete', 'on_hold'],
-  inBim360: ['not_started', 'in_progress', 'client_review', 'complete', 'on_hold'],
-  drawing2d: ['not_started', 'in_progress', 'engineer_review', 'client_review', 'complete', 'on_hold'],
+  integrated: ['not_started', 'in_progress', 'engineer_review', 'revision_required', 'complete', 'on_hold'],
+  inBim360: ['not_started', 'in_progress', 'client_review', 'revision_required', 'complete', 'on_hold'],
+  drawing2d: ['not_started', 'in_progress', 'engineer_review', 'client_review', 'revision_required', 'complete', 'on_hold'],
 };
 
 export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: ShowSetDetailProps) {
@@ -163,6 +163,12 @@ export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: Sho
             <span className="text-sm">{showSet.scene}</span>
             <span className="text-sm text-muted-foreground">{description}</span>
           </div>
+          {/* Version display */}
+          <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1">
+            <span>{t('stages.screen')}: <span className="font-medium text-foreground">v{showSet.screenVersion ?? 1}</span></span>
+            <span>Revit: <span className="font-medium text-foreground">v{showSet.revitVersion ?? 1}</span></span>
+            <span>{t('stages.drawing2d')}: <span className="font-medium text-foreground">v{showSet.drawingVersion ?? 1}</span></span>
+          </div>
         </div>
 
         {/* VM List */}
@@ -251,6 +257,8 @@ export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: Sho
                       return <UserCheck className="h-5 w-5 text-purple-500" />;
                     case 'client_review':
                       return <Eye className="h-5 w-5 text-blue-500" />;
+                    case 'revision_required':
+                      return <AlertTriangle className="h-5 w-5 text-amber-500" />;
                     case 'on_hold':
                       return <Pause className="h-5 w-5 text-red-500" />;
                     default:

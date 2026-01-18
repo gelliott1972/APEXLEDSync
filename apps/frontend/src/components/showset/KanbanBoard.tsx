@@ -150,6 +150,15 @@ const cardColors: Record<StageStatus, string> = {
   on_hold: 'bg-red-500/30 border-red-500/50 hover:border-red-400',
 };
 
+// Get the highest relevant version for display
+function getDisplayVersion(showSet: ShowSet): number {
+  return Math.max(
+    showSet.screenVersion ?? 1,
+    showSet.revitVersion ?? 1,
+    showSet.drawingVersion ?? 1
+  );
+}
+
 function KanbanCard({
   showSet,
   status,
@@ -159,26 +168,45 @@ function KanbanCard({
   status: StageStatus;
   onClick: () => void;
 }) {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const lang = i18n.language as 'en' | 'zh' | 'zh-TW';
   const description = showSet.description[lang] || showSet.description.en;
+  const displayVersion = getDisplayVersion(showSet);
+  const showVersion = displayVersion > 1;
 
   return (
     <div
       className={cn(
-        'group relative px-2 py-0.5 rounded border cursor-pointer transition-colors flex items-center justify-center',
+        'group relative px-2 py-0.5 rounded border cursor-pointer transition-colors flex items-center justify-center gap-1',
         cardColors[status]
       )}
       onClick={onClick}
     >
       <span className="text-sm font-medium kanban-text">{showSet.showSetId}</span>
+      {showVersion && (
+        <span className="text-xs opacity-70 kanban-text">(v{displayVersion})</span>
+      )}
 
-      {/* Hover tooltip */}
-      <div className="absolute left-full top-0 ml-1 z-50 hidden group-hover:block w-40 p-2 bg-popover border rounded-lg shadow-lg overflow-hidden">
+      {/* Hover tooltip with version details */}
+      <div className="absolute left-full top-0 ml-1 z-50 hidden group-hover:block w-48 p-2 bg-popover border rounded-lg shadow-lg overflow-hidden">
         <div className="text-xs space-y-1">
           <div className="font-medium">{showSet.showSetId}</div>
           <div className="text-muted-foreground">{showSet.scene}</div>
           <div className="text-muted-foreground truncate">{description}</div>
+          <div className="pt-1 border-t mt-1 space-y-0.5">
+            <div className="flex justify-between">
+              <span>{t('stages.screen')}:</span>
+              <span className="font-medium">v{showSet.screenVersion ?? 1}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Revit:</span>
+              <span className="font-medium">v{showSet.revitVersion ?? 1}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>{t('stages.drawing2d')}:</span>
+              <span className="font-medium">v{showSet.drawingVersion ?? 1}</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>

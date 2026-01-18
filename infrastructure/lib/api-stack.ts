@@ -4,6 +4,7 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
+import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import type { Construct } from 'constructs';
 import * as path from 'path';
@@ -21,6 +22,7 @@ interface ApiStackProps extends cdk.StackProps {
   userPool: cognito.UserPool;
   userPoolClient: cognito.UserPoolClient;
   translationQueue: sqs.Queue;
+  attachmentsBucket: s3.Bucket;
 }
 
 export class ApiStack extends cdk.Stack {
@@ -69,6 +71,7 @@ export class ApiStack extends cdk.Stack {
       SESSIONS_TABLE: props.sessionsTable.tableName,
       TRANSLATION_QUEUE_URL: props.translationQueue.queueUrl,
       USER_POOL_ID: props.userPool.userPoolId,
+      ATTACHMENTS_BUCKET: props.attachmentsBucket.bucketName,
     };
 
     // Helper to create Lambda functions
@@ -104,6 +107,7 @@ export class ApiStack extends cdk.Stack {
     // Notes handler
     const notesHandler = createHandler('Notes', 'notes');
     props.translationQueue.grantSendMessages(notesHandler);
+    props.attachmentsBucket.grantReadWrite(notesHandler);
 
     // Sessions handler
     const sessionsHandler = createHandler('Sessions', 'sessions');
@@ -197,6 +201,9 @@ export class ApiStack extends cdk.Stack {
     const links = showSetById.addResource('links');
     links.addMethod('PUT', showSetsIntegration, authOptions);
 
+    const version = showSetById.addResource('version');
+    version.addMethod('PUT', showSetsIntegration, authOptions);
+
     // Notes endpoints
     const showSetNotes = showSetById.addResource('notes');
     showSetNotes.addMethod('GET', notesIntegration, authOptions);
@@ -206,6 +213,18 @@ export class ApiStack extends cdk.Stack {
     const noteById = notes.addResource('{noteId}');
     noteById.addMethod('PUT', notesIntegration, authOptions);
     noteById.addMethod('DELETE', notesIntegration, authOptions);
+
+    // Note attachments
+    const attachments = noteById.addResource('attachments');
+    const presign = attachments.addResource('presign');
+    presign.addMethod('POST', notesIntegration, authOptions);
+
+    const attachmentById = attachments.addResource('{attachmentId}');
+    attachmentById.addMethod('GET', notesIntegration, authOptions);
+    attachmentById.addMethod('DELETE', notesIntegration, authOptions);
+
+    const confirmAttachment = attachmentById.addResource('confirm');
+    confirmAttachment.addMethod('POST', notesIntegration, authOptions);
 
     // Activity endpoints
     const showSetActivity = showSetById.addResource('activity');

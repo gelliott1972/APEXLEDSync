@@ -47,6 +47,7 @@ const updateUserSchema = z.object({
   role: z.enum(['admin', 'bim_coordinator', '3d_modeller', '2d_drafter']).optional(),
   preferredLang: z.enum(['en', 'zh', 'zh-TW']).optional(),
   status: z.enum(['active', 'deactivated']).optional(),
+  canEditVersions: z.boolean().optional(),
 });
 
 // Handlers
@@ -203,9 +204,9 @@ const updateUser: AuthenticatedHandler = async (event, auth) => {
       });
     }
 
-    const { name, role, preferredLang, status } = parsed.data;
+    const { name, role, preferredLang, status, canEditVersions } = parsed.data;
 
-    if (!name && !role && !preferredLang && !status) {
+    if (!name && !role && !preferredLang && status === undefined && canEditVersions === undefined) {
       return validationError('At least one field must be provided');
     }
 
@@ -297,6 +298,12 @@ const updateUser: AuthenticatedHandler = async (event, auth) => {
       updateExpressions.push('#status = :status');
       expressionAttributeNames['#status'] = 'status';
       expressionAttributeValues[':status'] = status;
+    }
+
+    if (canEditVersions !== undefined) {
+      updateExpressions.push('#canEditVersions = :canEditVersions');
+      expressionAttributeNames['#canEditVersions'] = 'canEditVersions';
+      expressionAttributeValues[':canEditVersions'] = canEditVersions;
     }
 
     updateExpressions.push('#updatedAt = :updatedAt');

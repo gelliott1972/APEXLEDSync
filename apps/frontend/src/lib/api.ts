@@ -7,6 +7,7 @@ import type {
   LinksUpdateInput,
   Note,
   NoteCreateInput,
+  NoteAttachment,
   Session,
   SessionStartInput,
   User,
@@ -106,6 +107,82 @@ export const notesApi = {
     request<void>(`/notes/${noteId}?showSetId=${showSetId}`, {
       method: 'DELETE',
     }),
+
+  // Attachment methods
+  presignUpload: (noteId: string, showSetId: string, file: { fileName: string; mimeType: string; fileSize: number }) =>
+    request<{ uploadUrl: string; attachmentId: string; s3Key: string }>(
+      `/notes/${noteId}/attachments/presign?showSetId=${showSetId}`,
+      {
+        method: 'POST',
+        body: JSON.stringify(file),
+      }
+    ),
+
+  confirmUpload: (
+    noteId: string,
+    attachmentId: string,
+    showSetId: string,
+    details: { fileName: string; mimeType: string; fileSize: number; s3Key: string }
+  ) =>
+    request<NoteAttachment>(
+      `/notes/${noteId}/attachments/${attachmentId}/confirm?showSetId=${showSetId}`,
+      {
+        method: 'POST',
+        body: JSON.stringify(details),
+      }
+    ),
+
+  getAttachment: (noteId: string, attachmentId: string, showSetId: string) =>
+    request<{ downloadUrl: string; attachment: NoteAttachment }>(
+      `/notes/${noteId}/attachments/${attachmentId}?showSetId=${showSetId}`
+    ),
+
+  deleteAttachment: (noteId: string, attachmentId: string, showSetId: string) =>
+    request<void>(
+      `/notes/${noteId}/attachments/${attachmentId}?showSetId=${showSetId}`,
+      { method: 'DELETE' }
+    ),
+
+  // Upload file helper - combines presign + upload + confirm
+  uploadFile: async (
+    noteId: string,
+    showSetId: string,
+    file: File
+  ): Promise<NoteAttachment> => {
+    // 1. Get presigned URL
+    const { uploadUrl, attachmentId, s3Key } = await notesApi.presignUpload(
+      noteId,
+      showSetId,
+      {
+        fileName: file.name,
+        mimeType: file.type,
+        fileSize: file.size,
+      }
+    );
+
+    // 2. Upload file directly to S3
+    const uploadResponse = await fetch(uploadUrl, {
+      method: 'PUT',
+      body: file,
+      headers: {
+        'Content-Type': file.type,
+      },
+    });
+
+    if (!uploadResponse.ok) {
+      throw new Error('Failed to upload file to S3');
+    }
+
+    // 3. Confirm upload
+    const attachment = await notesApi.confirmUpload(noteId, attachmentId, showSetId, {
+      fileName: file.name,
+      mimeType: file.type,
+      fileSize: file.size,
+      s3Key,
+    });
+
+    return attachment;
+  },
 };
 
 // Sessions API
