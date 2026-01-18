@@ -1,9 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
 import { LayoutGrid, Rows3, Search, X } from 'lucide-react';
-import { showSetsApi } from '@/lib/api';
 import { useUIStore } from '@/stores/ui-store';
+import { useShowSetsData } from '@/hooks/useShowSetsData';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -45,10 +44,9 @@ export function DashboardPage() {
     setNotesOnly(true);
   };
 
-  const { data: showSets = [], isLoading } = useQuery({
-    queryKey: ['showsets', filters.area !== 'all' ? filters.area : undefined],
-    queryFn: () => showSetsApi.list(filters.area !== 'all' ? filters.area : undefined),
-  });
+  const { showSets, isLoading } = useShowSetsData(
+    filters.area !== 'all' ? filters.area : undefined
+  );
 
   // Get unique scenes for filter dropdown
   const scenes = [...new Set(showSets.map((s) => s.scene))].sort();

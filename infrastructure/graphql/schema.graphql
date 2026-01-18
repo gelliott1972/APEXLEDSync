@@ -1,0 +1,153 @@
+type LocalizedString {
+  en: String!
+  zh: String!
+  zhTW: String!
+}
+
+input LocalizedStringInput {
+  en: String!
+  zh: String!
+  zhTW: String!
+}
+
+type VMItem {
+  id: String!
+  name: String
+}
+
+input VMItemInput {
+  id: String!
+  name: String
+}
+
+enum StageStatus {
+  not_started
+  in_progress
+  complete
+  on_hold
+  client_review
+  engineer_review
+  revision_required
+}
+
+enum StageName {
+  screen
+  structure
+  integrated
+  inBim360
+  drawing2d
+}
+
+type StageInfo {
+  status: StageStatus!
+  assignedTo: String
+  updatedBy: String!
+  updatedAt: String!
+  version: String
+  revisionNote: String
+  revisionNoteBy: String
+  revisionNoteAt: String
+}
+
+type ShowSetStages {
+  screen: StageInfo!
+  structure: StageInfo!
+  integrated: StageInfo!
+  inBim360: StageInfo!
+  drawing2d: StageInfo!
+}
+
+type ShowSetLinks {
+  modelUrl: String
+  drawingsUrl: String
+}
+
+type VersionHistoryEntry {
+  id: String!
+  versionType: String!
+  version: Int!
+  reason: LocalizedString!
+  createdAt: String!
+  createdBy: String!
+}
+
+type ShowSet {
+  showSetId: String!
+  area: String!
+  scene: String!
+  description: LocalizedString!
+  vmList: [VMItem!]!
+  stages: ShowSetStages!
+  links: ShowSetLinks!
+  screenVersion: Int!
+  structureVersion: Int!
+  integratedVersion: Int!
+  bim360Version: Int!
+  drawingVersion: Int!
+  versionHistory: [VersionHistoryEntry!]!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type Session {
+  userId: String!
+  userName: String!
+  showSetId: String
+  workingStages: [StageName!]!
+  activity: String!
+  startedAt: String!
+  lastHeartbeat: String!
+}
+
+# Input types for mutations
+input StageUpdateInput {
+  status: StageStatus!
+  assignedTo: String
+  version: String
+  revisionNote: String
+  revisionNoteLang: String
+  skipVersionIncrement: Boolean
+}
+
+input LinksUpdateInput {
+  modelUrl: String
+  drawingsUrl: String
+}
+
+input VersionUpdateInput {
+  versionType: String!
+  targetVersion: Int!
+  reason: String
+  language: String!
+}
+
+input SessionStartInput {
+  showSetId: String
+  workingStages: [StageName!]
+  activity: String!
+}
+
+# Queries
+type Query {
+  listShowSets(area: String): [ShowSet!]!
+  getShowSet(showSetId: String!): ShowSet
+  listSessions: [Session!]!
+}
+
+# Mutations
+type Mutation {
+  updateStage(showSetId: String!, stage: StageName!, input: StageUpdateInput!): ShowSet
+  updateLinks(showSetId: String!, input: LinksUpdateInput!): ShowSet
+  updateVersion(showSetId: String!, input: VersionUpdateInput!): ShowSet
+  startSession(input: SessionStartInput!): Session
+  endSession: Boolean
+  heartbeat(showSetId: String, activity: String, workingStages: [StageName!]): Boolean
+}
+
+# Subscriptions for real-time updates
+type Subscription {
+  onShowSetUpdated(area: String): ShowSet
+    @aws_subscribe(mutations: ["updateStage", "updateLinks", "updateVersion"])
+  onSessionChanged: Session
+    @aws_subscribe(mutations: ["startSession", "endSession", "heartbeat"])
+}

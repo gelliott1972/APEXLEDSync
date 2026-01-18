@@ -1,8 +1,9 @@
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { Play, Square, Clock } from 'lucide-react';
-import { sessionsApi, activityApi } from '@/lib/api';
+import { activityApi } from '@/lib/api';
 import { useSessionStore } from '@/stores/session-store';
+import { useSessionsData } from '@/hooks/useSessionsData';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -84,11 +85,7 @@ export function StatusBoardPage() {
   const { t } = useTranslation();
   const { isWorking, startSession, endSession } = useSessionStore();
 
-  const { data: sessions = [] } = useQuery({
-    queryKey: ['sessions'],
-    queryFn: sessionsApi.list,
-    refetchInterval: 30000, // 30 seconds
-  });
+  const { sessions } = useSessionsData();
 
   const { data: recentActivity = [] } = useQuery({
     queryKey: ['activity', 'recent'],

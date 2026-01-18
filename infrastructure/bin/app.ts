@@ -3,6 +3,7 @@ import * as cdk from 'aws-cdk-lib';
 import { DatabaseStack } from '../lib/database-stack.js';
 import { AuthStack } from '../lib/auth-stack.js';
 import { ApiStack } from '../lib/api-stack.js';
+import { AppSyncStack } from '../lib/appsync-stack.js';
 import { FrontendStack } from '../lib/frontend-stack.js';
 import { TranslationStack } from '../lib/translation-stack.js';
 import { StorageStack } from '../lib/storage-stack.js';
@@ -52,6 +53,16 @@ const apiStack = new ApiStack(app, 'UnisyncApiStack', {
   userPoolClient: authStack.userPoolClient,
   translationQueue: translationStack.translationQueue,
   attachmentsBucket: storageStack.attachmentsBucket,
+});
+
+// AppSync stack - GraphQL API with real-time subscriptions
+const appSyncStack = new AppSyncStack(app, 'UnisyncAppSyncStack', {
+  env,
+  description: 'UniSync GraphQL API with real-time subscriptions',
+  usersTable: databaseStack.usersTable,
+  showSetsTable: databaseStack.showSetsTable,
+  sessionsTable: databaseStack.sessionsTable,
+  userPool: authStack.userPool,
 });
 
 // Frontend stack - S3 and CloudFront

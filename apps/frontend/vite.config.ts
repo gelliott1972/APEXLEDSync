@@ -10,6 +10,10 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  define: {
+    // Polyfill for aws-appsync-auth-link which expects Node.js 'global'
+    global: 'globalThis',
+  },
   server: {
     port: 3000,
     proxy: {
