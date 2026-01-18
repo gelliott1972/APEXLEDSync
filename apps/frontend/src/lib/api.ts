@@ -87,7 +87,7 @@ export const showSetsApi = {
       body: JSON.stringify(input),
     }),
 
-  updateVersion: (id: string, input: { versionType: 'screenVersion' | 'revitVersion' | 'drawingVersion'; targetVersion: number; reason?: string; language: string }) =>
+  updateVersion: (id: string, input: { versionType: 'screenVersion' | 'structureVersion' | 'integratedVersion' | 'bim360Version' | 'drawingVersion'; targetVersion: number; reason?: string; language: string }) =>
     request<void>(`/showsets/${id}/version`, {
       method: 'PUT',
       body: JSON.stringify(input),

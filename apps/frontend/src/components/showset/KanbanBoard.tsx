@@ -146,7 +146,9 @@ const cardColors: Record<StageStatus, string> = {
 function getDisplayVersion(showSet: ShowSet): number {
   return Math.max(
     showSet.screenVersion ?? 1,
-    showSet.revitVersion ?? 1,
+    showSet.structureVersion ?? showSet.revitVersion ?? 1,
+    showSet.integratedVersion ?? showSet.revitVersion ?? 1,
+    showSet.bim360Version ?? showSet.revitVersion ?? 1,
     showSet.drawingVersion ?? 1
   );
 }
@@ -194,8 +196,16 @@ function KanbanCard({
               <span className="font-medium">v{showSet.screenVersion ?? 1}</span>
             </div>
             <div className="flex justify-between">
-              <span>Revit:</span>
-              <span className="font-medium">v{showSet.revitVersion ?? 1}</span>
+              <span>{t('stages.structure')}:</span>
+              <span className="font-medium">v{showSet.structureVersion ?? showSet.revitVersion ?? 1}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>{t('stages.integrated')}:</span>
+              <span className="font-medium">v{showSet.integratedVersion ?? showSet.revitVersion ?? 1}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>{t('stages.inBim360')}:</span>
+              <span className="font-medium">v{showSet.bim360Version ?? showSet.revitVersion ?? 1}</span>
             </div>
             <div className="flex justify-between">
               <span>{t('stages.drawing2d')}:</span>

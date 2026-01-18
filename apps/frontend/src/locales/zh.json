@@ -115,7 +115,8 @@
     "selectStages": "选择您要处理 {{id}} 的哪些阶段。",
     "noAvailableStages": "没有可处理的阶段。",
     "finishWorkDescription": "您当前正在处理：{{stages}}",
-    "markComplete": "标记为完成："
+    "markComplete": "标记为完成：",
+    "incrementVersion": "增加版本号"
   },
   "admin": {
     "title": "管理",

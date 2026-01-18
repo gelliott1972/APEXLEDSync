@@ -83,7 +83,9 @@ export function EditShowSetDialog({ showSet, open, onClose }: EditShowSetDialogP
   });
   const [versionsExpanded, setVersionsExpanded] = useState(false);
   const [screenVersion, setScreenVersion] = useState(showSet.screenVersion ?? 1);
-  const [revitVersion, setRevitVersion] = useState(showSet.revitVersion ?? 1);
+  const [structureVersion, setStructureVersion] = useState(showSet.structureVersion ?? showSet.revitVersion ?? 1);
+  const [integratedVersion, setIntegratedVersion] = useState(showSet.integratedVersion ?? showSet.revitVersion ?? 1);
+  const [bim360Version, setBim360Version] = useState(showSet.bim360Version ?? showSet.revitVersion ?? 1);
   const [drawingVersion, setDrawingVersion] = useState(showSet.drawingVersion ?? 1);
   const [versionReason, setVersionReason] = useState('');
 
@@ -92,7 +94,9 @@ export function EditShowSetDialog({ showSet, open, onClose }: EditShowSetDialogP
   // Track if versions have changed
   const versionsChanged =
     screenVersion !== (showSet.screenVersion ?? 1) ||
-    revitVersion !== (showSet.revitVersion ?? 1) ||
+    structureVersion !== (showSet.structureVersion ?? showSet.revitVersion ?? 1) ||
+    integratedVersion !== (showSet.integratedVersion ?? showSet.revitVersion ?? 1) ||
+    bim360Version !== (showSet.bim360Version ?? showSet.revitVersion ?? 1) ||
     drawingVersion !== (showSet.drawingVersion ?? 1);
 
   const {
@@ -140,7 +144,9 @@ export function EditShowSetDialog({ showSet, open, onClose }: EditShowSetDialogP
       setLastTranslatedText(null);
       // Reset versions
       setScreenVersion(showSet.screenVersion ?? 1);
-      setRevitVersion(showSet.revitVersion ?? 1);
+      setStructureVersion(showSet.structureVersion ?? showSet.revitVersion ?? 1);
+      setIntegratedVersion(showSet.integratedVersion ?? showSet.revitVersion ?? 1);
+      setBim360Version(showSet.bim360Version ?? showSet.revitVersion ?? 1);
       setDrawingVersion(showSet.drawingVersion ?? 1);
       setVersionReason('');
     }
@@ -225,7 +231,7 @@ export function EditShowSetDialog({ showSet, open, onClose }: EditShowSetDialogP
   });
 
   const versionMutation = useMutation({
-    mutationFn: async (data: { screenVersion: number; revitVersion: number; drawingVersion: number; reason: string }) => {
+    mutationFn: async (data: { screenVersion: number; structureVersion: number; integratedVersion: number; bim360Version: number; drawingVersion: number; reason: string }) => {
       const updates: Promise<void>[] = [];
       if (data.screenVersion !== (showSet.screenVersion ?? 1)) {
         updates.push(showSetsApi.updateVersion(showSet.showSetId, {
@@ -235,10 +241,26 @@ export function EditShowSetDialog({ showSet, open, onClose }: EditShowSetDialogP
           language: currentLang,
         }));
       }
-      if (data.revitVersion !== (showSet.revitVersion ?? 1)) {
+      if (data.structureVersion !== (showSet.structureVersion ?? showSet.revitVersion ?? 1)) {
         updates.push(showSetsApi.updateVersion(showSet.showSetId, {
-          versionType: 'revitVersion',
-          targetVersion: data.revitVersion,
+          versionType: 'structureVersion',
+          targetVersion: data.structureVersion,
+          reason: data.reason,
+          language: currentLang,
+        }));
+      }
+      if (data.integratedVersion !== (showSet.integratedVersion ?? showSet.revitVersion ?? 1)) {
+        updates.push(showSetsApi.updateVersion(showSet.showSetId, {
+          versionType: 'integratedVersion',
+          targetVersion: data.integratedVersion,
+          reason: data.reason,
+          language: currentLang,
+        }));
+      }
+      if (data.bim360Version !== (showSet.bim360Version ?? showSet.revitVersion ?? 1)) {
+        updates.push(showSetsApi.updateVersion(showSet.showSetId, {
+          versionType: 'bim360Version',
+          targetVersion: data.bim360Version,
           reason: data.reason,
           language: currentLang,
         }));
@@ -268,7 +290,7 @@ export function EditShowSetDialog({ showSet, open, onClose }: EditShowSetDialogP
     await updateMutation.mutateAsync(data);
     // Then save version changes if any
     if (versionsChanged) {
-      await versionMutation.mutateAsync({ screenVersion, revitVersion, drawingVersion, reason: versionReason });
+      await versionMutation.mutateAsync({ screenVersion, structureVersion, integratedVersion, bim360Version, drawingVersion, reason: versionReason });
     }
   };
 
@@ -449,9 +471,9 @@ export function EditShowSetDialog({ showSet, open, onClose }: EditShowSetDialogP
               </button>
               {versionsExpanded && (
                 <div className="space-y-2 pl-4 border-l-2 border-muted">
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-5 gap-2">
                     <div>
-                      <Label htmlFor="screenVersion" className="text-xs">{t('stages.screen')}</Label>
+                      <Label htmlFor="screenVersion" className="text-xs">{t('stages.short.screen')}</Label>
                       <Input
                         id="screenVersion"
                         type="number"
@@ -462,18 +484,40 @@ export function EditShowSetDialog({ showSet, open, onClose }: EditShowSetDialogP
                       />
                     </div>
                     <div>
-                      <Label htmlFor="revitVersion" className="text-xs">Revit</Label>
+                      <Label htmlFor="structureVersion" className="text-xs">{t('stages.short.structure')}</Label>
                       <Input
-                        id="revitVersion"
+                        id="structureVersion"
                         type="number"
                         min={1}
-                        value={revitVersion}
-                        onChange={(e) => setRevitVersion(Math.max(1, parseInt(e.target.value) || 1))}
+                        value={structureVersion}
+                        onChange={(e) => setStructureVersion(Math.max(1, parseInt(e.target.value) || 1))}
                         className="h-8 text-sm"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="drawingVersion" className="text-xs">{t('stages.drawing2d')}</Label>
+                      <Label htmlFor="integratedVersion" className="text-xs">{t('stages.short.integrated')}</Label>
+                      <Input
+                        id="integratedVersion"
+                        type="number"
+                        min={1}
+                        value={integratedVersion}
+                        onChange={(e) => setIntegratedVersion(Math.max(1, parseInt(e.target.value) || 1))}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="bim360Version" className="text-xs">{t('stages.short.inBim360')}</Label>
+                      <Input
+                        id="bim360Version"
+                        type="number"
+                        min={1}
+                        value={bim360Version}
+                        onChange={(e) => setBim360Version(Math.max(1, parseInt(e.target.value) || 1))}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="drawingVersion" className="text-xs">{t('stages.short.drawing2d')}</Label>
                       <Input
                         id="drawingVersion"
                         type="number"

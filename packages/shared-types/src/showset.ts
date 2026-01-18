@@ -63,8 +63,17 @@ export interface ShowSetLinks {
   drawingsUrl: string | null;
 }
 
-// Version types
-export type VersionType = 'screenVersion' | 'revitVersion' | 'drawingVersion';
+// Version types - one per stage
+export type VersionType = 'screenVersion' | 'structureVersion' | 'integratedVersion' | 'bim360Version' | 'drawingVersion';
+
+// Map stage names to version types
+export const STAGE_VERSION_MAP: Record<StageName, VersionType> = {
+  screen: 'screenVersion',
+  structure: 'structureVersion',
+  integrated: 'integratedVersion',
+  inBim360: 'bim360Version',
+  drawing2d: 'drawingVersion',
+};
 
 export interface VersionHistoryEntry {
   id: string;
@@ -83,10 +92,14 @@ export interface ShowSet {
   vmList: VMItem[];
   stages: ShowSetStages;
   links: ShowSetLinks;
-  // Version tracking
+  // Version tracking - per stage
   screenVersion: number;
-  revitVersion: number;
+  structureVersion: number;
+  integratedVersion: number;
+  bim360Version: number;
   drawingVersion: number;
+  // Legacy field for backward compatibility (will be removed)
+  revitVersion?: number;
   versionHistory: VersionHistoryEntry[];
   createdAt: string;
   updatedAt: string;
@@ -114,6 +127,7 @@ export interface StageUpdateInput {
   version?: string;
   revisionNote?: string;
   revisionNoteLang?: 'en' | 'zh' | 'zh-TW';
+  skipVersionIncrement?: boolean; // Skip auto-increment when going revision_required -> in_progress
 }
 
 export interface LinksUpdateInput {
@@ -135,7 +149,7 @@ export interface ShowSetAreaGSI {
 // Permissions by role for stages
 export const STAGE_PERMISSIONS: Record<string, StageName[]> = {
   admin: ['screen', 'structure', 'integrated', 'inBim360', 'drawing2d'],
-  bim_coordinator: ['screen', 'structure', 'integrated', 'inBim360', 'drawing2d'],
+  bim_coordinator: ['inBim360'],
   engineer: ['screen', 'structure', 'integrated', 'inBim360', 'drawing2d'], // Can only approve/reject, not work
   '3d_modeller': ['screen', 'structure', 'integrated'],
   '2d_drafter': ['drawing2d'],

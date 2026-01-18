@@ -65,25 +65,28 @@ const stageUpdateSchema = z.object({
   version: z.string().optional(),
   revisionNote: z.string().optional(), // Required when setting revision_required
   revisionNoteLang: z.enum(['en', 'zh', 'zh-TW']).optional(),
+  skipVersionIncrement: z.boolean().optional(), // Skip auto-increment when going revision_required -> in_progress
 });
 
-// Schema for manual version update
+// Schema for manual version update - per-stage versions
 const versionUpdateSchema = z.object({
-  versionType: z.enum(['screenVersion', 'revitVersion', 'drawingVersion']),
+  versionType: z.enum(['screenVersion', 'structureVersion', 'integratedVersion', 'bim360Version', 'drawingVersion']),
   reason: z.string().optional().default(''),
   language: z.enum(['en', 'zh', 'zh-TW']),
   targetVersion: z.number().int().positive().optional(), // If provided, set to this version directly
 });
 
-// Map stage to version type
+// Map stage to version type - per-stage versions
 function getVersionTypeForStage(stage: StageName): VersionType | null {
   switch (stage) {
     case 'screen':
       return 'screenVersion';
     case 'structure':
+      return 'structureVersion';
     case 'integrated':
+      return 'integratedVersion';
     case 'inBim360':
-      return 'revitVersion';
+      return 'bim360Version';
     case 'drawing2d':
       return 'drawingVersion';
     default:
@@ -257,9 +260,11 @@ const createShowSet: AuthenticatedHandler = async (event, auth) => {
         modelUrl: null,
         drawingsUrl: null,
       },
-      // Version tracking - initialize to v1
+      // Version tracking - per-stage, initialize to v1
       screenVersion: 1,
-      revitVersion: 1,
+      structureVersion: 1,
+      integratedVersion: 1,
+      bim360Version: 1,
       drawingVersion: 1,
       versionHistory: [],
       createdAt: timestamp,
@@ -488,7 +493,7 @@ const updateStage: AuthenticatedHandler = async (event, auth) => {
       });
     }
 
-    const { status, assignedTo, version, revisionNote, revisionNoteLang } = parsed.data;
+    const { status, assignedTo, version, revisionNote, revisionNoteLang, skipVersionIncrement } = parsed.data;
 
     // Engineers can only approve (complete) or request revision
     if (isEngineer(auth.role) && !ENGINEER_ALLOWED_STATUSES.includes(status)) {
@@ -522,12 +527,13 @@ const updateStage: AuthenticatedHandler = async (event, auth) => {
     const timestamp = now();
 
     // Check if this is a revision_required -> in_progress transition (version bump)
+    // Only auto-increment if skipVersionIncrement is not true
     const isRevisionToInProgress = currentStage.status === 'revision_required' && status === 'in_progress';
     const versionType = getVersionTypeForStage(stageName);
     let newVersion: number | undefined;
     let versionHistoryEntry: VersionHistoryEntry | undefined;
 
-    if (isRevisionToInProgress && versionType) {
+    if (isRevisionToInProgress && versionType && !skipVersionIncrement) {
       // Auto-increment the version
       newVersion = (currentShowSet[versionType] ?? 1) + 1;
 

@@ -48,9 +48,9 @@ Uses SSO profile `AdministratorAccess-726966883566`. All resources prefixed with
 |--------|-------|-----------|----------|-------------|------------|
 | Access Admin page | ✓ | | | | |
 | Create/delete ShowSets | ✓ | | | | |
-| Update Screen/Structure/Integrated | ✓ | ✓ | ✓* | ✓ | |
+| Update Screen/Structure/Integrated | ✓ | | ✓* | ✓ | |
 | Update In BIM360 | ✓ | ✓ | ✓* | | |
-| Update 2D Drawing | ✓ | ✓ | ✓* | | ✓ |
+| Update 2D Drawing | ✓ | | ✓* | | ✓ |
 | Manage links | ✓ | ✓ | | | |
 | Add/edit own notes | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Delete any notes | ✓ | | | | |

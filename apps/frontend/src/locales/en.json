@@ -115,7 +115,8 @@
     "selectStages": "Select which stages you want to work on for {{id}}.",
     "noAvailableStages": "No stages available to work on.",
     "finishWorkDescription": "You are currently working on: {{stages}}",
-    "markComplete": "Mark as complete:"
+    "markComplete": "Mark as complete:",
+    "incrementVersion": "Increment version"
   },
   "admin": {
     "title": "Administration",

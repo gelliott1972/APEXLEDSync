@@ -23,15 +23,17 @@ const STAGES: StageName[] = [
   'drawing2d',
 ];
 
-// Get the relevant version for a stage
+// Get the relevant version for a stage - each stage has its own version
 function getVersionForStage(showSet: ShowSet, stage: StageName): number {
   switch (stage) {
     case 'screen':
       return showSet.screenVersion ?? 1;
     case 'structure':
+      return showSet.structureVersion ?? showSet.revitVersion ?? 1; // Fallback for legacy data
     case 'integrated':
+      return showSet.integratedVersion ?? showSet.revitVersion ?? 1; // Fallback for legacy data
     case 'inBim360':
-      return showSet.revitVersion ?? 1;
+      return showSet.bim360Version ?? showSet.revitVersion ?? 1; // Fallback for legacy data
     case 'drawing2d':
       return showSet.drawingVersion ?? 1;
     default:
