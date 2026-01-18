@@ -26,20 +26,12 @@ export class FrontendStack extends cdk.Stack {
       autoDeleteObjects: true,
     });
 
-    // CloudFront Origin Access Identity
-    const oai = new cloudfront.OriginAccessIdentity(this, 'OAI', {
-      comment: 'UniSync Frontend OAI',
-    });
-
-    this.bucket.grantRead(oai);
-
-    // CloudFront distribution
+    // CloudFront distribution with Origin Access Control (OAC)
+    // Using S3BucketOrigin.withOriginAccessControl() instead of deprecated S3Origin
     this.distribution = new cloudfront.Distribution(this, 'Distribution', {
       comment: 'UniSync Frontend Distribution',
       defaultBehavior: {
-        origin: new origins.S3Origin(this.bucket, {
-          originAccessIdentity: oai,
-        }),
+        origin: origins.S3BucketOrigin.withOriginAccessControl(this.bucket),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
         allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
