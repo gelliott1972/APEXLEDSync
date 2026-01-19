@@ -1,163 +1,81 @@
 # UniSync - Resume Guide
 
-## How to Resume This Session on Another Machine
-
-### 1. Clone the Repository
-```bash
-git clone git@github.com:gelliott1972/APEXLEDSync.git unisync
-cd unisync
-git checkout feature/appsync-realtime
-pnpm install
-```
-
-### 2. Tell Claude Code to Resume
-Say: **"Let's resume from RESUME.md - start with the deployment fixes"**
-
----
-
 ## Current State (as of 2026-01-19)
 
-### Branch: `feature/appsync-realtime`
-- AppSync GraphQL infrastructure added
-- Apollo Client with subscriptions
-- Data hooks created
-- NOT YET: ShowSet locking feature
+### Branch: `main` (merged from feature/appsync-realtime)
 
-### Pending Tasks
+### Completed Features
+- **ShowSet Locking** - Full implementation complete
+  - Auto-locks when drawing2d status = complete
+  - Lock/unlock icons in table, kanban, and detail views
+  - Admin-only Unlock button with required reason
+  - Cascade reset of downstream stages when work starts on unlocked ShowSet
+  - StartWorkDialog shows locked message or cascade warning
 
-#### 1. CloudFront Deployment Issues
-**Problem:** Deployment to CloudFront isn't working properly
+- **Custom Domain** - apex.wrangleit.net
+  - ACM certificate created and validated in us-east-1
+  - Route53 A record configured
+  - CloudFront distribution updated
+  - deploy.bat script in infrastructure/ for manual deployments
 
-**Likely issues to check:**
-- GitHub Actions secrets: `AWS_ROLE_ARN`, `API_URL`
-- IAM role permissions for OIDC
-- S3 bucket permissions
-- CloudFront OAC configuration
+- **AppSync GraphQL** - Infrastructure added
+  - Schema with subscriptions for real-time updates
+  - Apollo Client integration
+  - Fixed subscription output type mismatch
 
-**To debug:**
-```bash
-# Check GitHub Actions runs
-gh run list --limit 5
+- **GitHub Actions CI/CD** - Optimized workflow
+  - Path-based detection (skips CDK for frontend-only changes)
+  - Fetches Cognito config from CloudFormation (no manual secrets needed)
+  - Added --passWithNoTests for vitest
+  - Builds shared-types before frontend
 
-# Check if secrets are set
-gh secret list
+### Currently Deploying
+GitHub Actions is running. Last push fixed: build shared-types before frontend.
+
+Check status: https://github.com/gelliott1972/APEXLEDSync/actions
+
+### Known Issues
+
+#### Notes Not Saving (Local Dev)
+When running `pnpm dev` locally, notes don't save because there's no local backend server.
+
+**Fix:** Create `apps/frontend/.env.local`:
 ```
-
-#### 2. GitHub Error Messages
-Need to investigate what errors are occurring. Check:
-- GitHub Actions workflow runs
-- Pull request checks
-- Branch protection rules
-
-#### 3. Custom Domain: apex.wrangleit.net
-**Requirements:**
-- Route53 hosted zone exists for wrangleit.net
-- Need ACM certificate in us-east-1 (required for CloudFront)
-- CloudFront alias configuration
-- Route53 A record pointing to CloudFront
-
-**Implementation steps:**
-1. Request ACM certificate for apex.wrangleit.net (MUST be in us-east-1)
-2. Validate certificate via DNS
-3. Update frontend-stack.ts to add domain alias
-4. Add Route53 A record for apex.wrangleit.net → CloudFront
-
-#### 4. ShowSet Locking Feature
-See `scratch/PLAN-showset-locking.md` for full details.
-
-**Summary:**
-- Auto-lock when drawing2d completes
-- Padlock icon (🔒/🔓) on locked ShowSets
-- Admin-only "Unlock" button with required reason
-- Cascade reset of downstream stages when work restarts
-
----
-
-## Files to Modify for Custom Domain
-
-### `infrastructure/lib/frontend-stack.ts`
-Add:
-- Certificate import/creation
-- CloudFront domain alias
-- Route53 A record
-
-### Example changes needed:
-```typescript
-import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import * as route53 from 'aws-cdk-lib/aws-route53';
-import * as targets from 'aws-cdk-lib/aws-route53-targets';
-
-// In FrontendStackProps
-domainName?: string;  // apex.wrangleit.net
-hostedZoneId?: string;
-certificateArn?: string;  // ACM cert ARN in us-east-1
-
-// In constructor - update distribution with:
-domainNames: props.domainName ? [props.domainName] : undefined,
-certificate: props.certificateArn
-  ? acm.Certificate.fromCertificateArn(this, 'Cert', props.certificateArn)
-  : undefined,
-
-// Add Route53 record
-if (props.domainName && props.hostedZoneId) {
-  const hostedZone = route53.HostedZone.fromHostedZoneAttributes(...);
-  new route53.ARecord(this, 'AliasRecord', {
-    zone: hostedZone,
-    recordName: props.domainName,
-    target: route53.RecordTarget.fromAlias(
-      new targets.CloudFrontTarget(this.distribution)
-    ),
-  });
-}
+VITE_API_URL=https://apex.wrangleit.net/api
 ```
+This points local frontend to deployed AWS backend.
 
----
+### Key Files Modified This Session
+- `apps/frontend/src/components/showset/StartWorkDialog.tsx` - Lock check + warnings
+- `apps/frontend/src/components/showset/ShowSetTable.tsx` - Lock icons
+- `apps/frontend/src/components/showset/KanbanBoard.tsx` - Lock icons
+- `apps/frontend/src/components/showset/UnlockShowSetDialog.tsx` - NEW
+- `apps/backend/src/handlers/showsets/index.ts` - Unlock endpoint + cascade logic
+- `.github/workflows/deploy.yml` - Optimized CI/CD
+- `infrastructure/graphql/schema.graphql` - Fixed subscription types
+- `infrastructure/deploy.bat` - Manual deployment script
 
-## AWS Resources to Create
+### AWS Resources
+- Certificate ARN: `arn:aws:acm:us-east-1:726966883566:certificate/ce9d9f3d-7dfe-41b8-a04c-812bddaa1977`
+- Hosted Zone ID: `Z10166762BQXM65SWNK23`
+- AWS Profile: `AdministratorAccess-726966883566`
 
-1. **ACM Certificate** (us-east-1 region - REQUIRED for CloudFront)
-   - Domain: apex.wrangleit.net
-   - Validation: DNS validation in Route53
-
-2. **GitHub OIDC Provider** (if not exists)
-   - For GitHub Actions to assume AWS role
-
-3. **IAM Role for GitHub Actions**
-   - Trust policy for GitHub OIDC
-   - Permissions for CDK deploy, S3, CloudFront
-
----
-
-## Quick Commands
-
+### Quick Commands
 ```bash
-# Start dev server
+# Local development (frontend only, uses deployed API)
+# First create apps/frontend/.env.local with VITE_API_URL
 pnpm dev
 
-# Build everything
-pnpm build
+# Manual deploy to AWS
+cd infrastructure && deploy.bat
 
-# Deploy to AWS (requires SSO login)
-cd infrastructure && npx cdk deploy --all
-
-# Check GitHub Actions status
+# Check GitHub Actions
 gh run list --repo gelliott1972/APEXLEDSync
 ```
 
 ---
 
-## Secrets Needed in GitHub
-
-| Secret | Description |
-|--------|-------------|
-| AWS_ROLE_ARN | IAM role ARN for OIDC authentication |
-| API_URL | Backend API URL (from API Gateway) |
-
----
-
-## Order of Operations
-
-1. **Fix GitHub Actions** - Get CI/CD working
-2. **Add custom domain** - apex.wrangleit.net
-3. **Implement locking feature** - ShowSet lock/unlock workflow
-4. **Test everything** - Playwright tests
+## Next Steps (if CI passes)
+1. Test locking feature on deployed site (apex.wrangleit.net)
+2. Test notes functionality on deployed site
+3. Consider adding actual test files to frontend/backend
