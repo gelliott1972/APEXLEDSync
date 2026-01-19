@@ -124,11 +124,23 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Get environment config from AWS
+        id: env-config
+        run: |
+          USER_POOL_ID=$(aws cloudformation describe-stacks --stack-name UnisyncAuthStack --query "Stacks[0].Outputs[?OutputKey=='UserPoolId'].OutputValue" --output text)
+          USER_POOL_CLIENT_ID=$(aws cloudformation describe-stacks --stack-name UnisyncAuthStack --query "Stacks[0].Outputs[?OutputKey=='UserPoolClientId'].OutputValue" --output text)
+          API_URL=$(aws cloudformation describe-stacks --stack-name UnisyncApiStack --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" --output text)
+          echo "user_pool_id=$USER_POOL_ID" >> $GITHUB_OUTPUT
+          echo "user_pool_client_id=$USER_POOL_CLIENT_ID" >> $GITHUB_OUTPUT
+          echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+
       - name: Build frontend
         working-directory: apps/frontend
         run: pnpm build
         env:
-          VITE_API_URL: ${{ secrets.API_URL }}
+          VITE_API_URL: ${{ steps.env-config.outputs.api_url }}
+          VITE_USER_POOL_ID: ${{ steps.env-config.outputs.user_pool_id }}
+          VITE_USER_POOL_CLIENT_ID: ${{ steps.env-config.outputs.user_pool_client_id }}
 
       - name: Get S3 bucket and CloudFront distribution
         id: aws-resources
