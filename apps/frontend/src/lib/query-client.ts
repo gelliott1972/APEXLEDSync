@@ -9,7 +9,7 @@ export const queryClient = new QueryClient({
       retry: 3,
     },
     mutations: {
-      retry: 1,
+      retry: false, // Mutations should not be retried - they are not idempotent
     },
   },
 });
