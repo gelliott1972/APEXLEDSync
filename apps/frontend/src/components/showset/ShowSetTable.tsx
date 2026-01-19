@@ -172,10 +172,14 @@ export function ShowSetTable({ showSets, onSelect, onSelectNotes }: ShowSetTable
                 <div className="flex items-center gap-1">
                   {showSet.showSetId}
                   {isShowSetLocked(showSet) && (
-                    <Lock className="h-3 w-3 text-amber-600" title={t('showset.locked')} />
+                    <span title={t('showset.locked')}>
+                      <Lock className="h-3 w-3 text-amber-600" />
+                    </span>
                   )}
                   {isShowSetUnlocked(showSet) && (
-                    <Unlock className="h-3 w-3 text-emerald-600" title={t('showset.unlocked')} />
+                    <span title={t('showset.unlocked')}>
+                      <Unlock className="h-3 w-3 text-emerald-600" />
+                    </span>
                   )}
                 </div>
               </td>
