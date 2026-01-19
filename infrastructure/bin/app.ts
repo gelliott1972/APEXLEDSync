@@ -56,7 +56,7 @@ const apiStack = new ApiStack(app, 'UnisyncApiStack', {
 });
 
 // AppSync stack - GraphQL API with real-time subscriptions
-const appSyncStack = new AppSyncStack(app, 'UnisyncAppSyncStack', {
+new AppSyncStack(app, 'UnisyncAppSyncStack', {
   env,
   description: 'UniSync GraphQL API with real-time subscriptions',
   usersTable: databaseStack.usersTable,
@@ -65,6 +65,11 @@ const appSyncStack = new AppSyncStack(app, 'UnisyncAppSyncStack', {
   userPool: authStack.userPool,
 });
 
+// Custom domain configuration (optional)
+const domainName = app.node.tryGetContext('domainName') ?? process.env.DOMAIN_NAME;
+const certificateArn = app.node.tryGetContext('certificateArn') ?? process.env.CERTIFICATE_ARN;
+const hostedZoneId = app.node.tryGetContext('hostedZoneId') ?? process.env.HOSTED_ZONE_ID;
+
 // Frontend stack - S3 and CloudFront
 new FrontendStack(app, 'UnisyncFrontendStack', {
   env,
@@ -72,6 +77,10 @@ new FrontendStack(app, 'UnisyncFrontendStack', {
   apiUrl: apiStack.apiUrl,
   userPoolId: authStack.userPool.userPoolId,
   userPoolClientId: authStack.userPoolClient.userPoolClientId,
+  // Custom domain (optional)
+  domainName,
+  certificateArn,
+  hostedZoneId,
 });
 
 app.synth();

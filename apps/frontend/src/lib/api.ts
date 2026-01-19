@@ -92,6 +92,12 @@ export const showSetsApi = {
       method: 'PUT',
       body: JSON.stringify(input),
     }),
+
+  unlock: (id: string, reason: string) =>
+    request<void>(`/showsets/${id}/unlock`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    }),
 };
 
 // Notes API

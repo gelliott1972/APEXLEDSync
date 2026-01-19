@@ -57,7 +57,15 @@
     "versions": "版本",
     "versionReason": "版本更改原因",
     "versionReasonPlaceholder": "请描述为什么要增加版本号...",
-    "versionReasonRequired": "请提供版本更改原因"
+    "versionReasonRequired": "请提供版本更改原因",
+    "locked": "已锁定",
+    "unlocked": "已解锁待修改",
+    "unlock": "解锁修改",
+    "unlockReason": "解锁原因",
+    "unlockReasonPlaceholder": "请描述为什么需要修改此展示组...",
+    "unlockWarning": "这将允许团队成员进行更改。必须提供原因。",
+    "lockedMessage": "此展示组已锁定。请联系管理员解锁以进行修改。",
+    "cascadeWarning": "开始此阶段的工作将重置所有后续阶段。"
   },
   "stages": {
     "screen": "屏幕",

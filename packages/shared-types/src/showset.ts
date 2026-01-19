@@ -101,6 +101,10 @@ export interface ShowSet {
   // Legacy field for backward compatibility (will be removed)
   revitVersion?: number;
   versionHistory: VersionHistoryEntry[];
+  // Locking - ShowSet locks when drawing2d.status === 'complete'
+  unlockedAt?: string;
+  unlockedBy?: string;
+  unlockReason?: string;
   createdAt: string;
   updatedAt: string;
 }

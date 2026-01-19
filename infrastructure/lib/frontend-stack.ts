@@ -3,12 +3,19 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
+import * as acm from 'aws-cdk-lib/aws-certificatemanager';
+import * as route53 from 'aws-cdk-lib/aws-route53';
+import * as targets from 'aws-cdk-lib/aws-route53-targets';
 import type { Construct } from 'constructs';
 
 interface FrontendStackProps extends cdk.StackProps {
   apiUrl: string;
   userPoolId: string;
   userPoolClientId: string;
+  // Optional custom domain configuration
+  domainName?: string;
+  certificateArn?: string;
+  hostedZoneId?: string;
 }
 
 export class FrontendStack extends cdk.Stack {
@@ -25,6 +32,11 @@ export class FrontendStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
     });
+
+    // Optional: Import ACM certificate from us-east-1
+    const certificate = props.certificateArn
+      ? acm.Certificate.fromCertificateArn(this, 'Certificate', props.certificateArn)
+      : undefined;
 
     // CloudFront distribution with Origin Access Control (OAC)
     // Using S3BucketOrigin.withOriginAccessControl() instead of deprecated S3Origin
@@ -52,7 +64,24 @@ export class FrontendStack extends cdk.Stack {
         },
       ],
       priceClass: cloudfront.PriceClass.PRICE_CLASS_200,
+      // Custom domain configuration
+      domainNames: props.domainName ? [props.domainName] : undefined,
+      certificate,
     });
+
+    // Optional: Create Route53 A record for custom domain
+    if (props.domainName && props.hostedZoneId) {
+      const hostedZone = route53.HostedZone.fromHostedZoneAttributes(this, 'HostedZone', {
+        hostedZoneId: props.hostedZoneId,
+        zoneName: props.domainName.split('.').slice(-2).join('.'), // Extract base domain
+      });
+
+      new route53.ARecord(this, 'AliasRecord', {
+        zone: hostedZone,
+        recordName: props.domainName,
+        target: route53.RecordTarget.fromAlias(new targets.CloudFrontTarget(this.distribution)),
+      });
+    }
 
     // Deploy frontend (placeholder - actual build artifacts will be deployed via CI/CD)
     // This creates a config.json file with runtime configuration

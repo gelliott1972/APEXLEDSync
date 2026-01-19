@@ -95,9 +95,23 @@ function getVersionTypeForStage(stage: StageName): VersionType | null {
 // Stages that support revision_required
 const REVISION_STAGES: StageName[] = ['integrated', 'inBim360', 'drawing2d'];
 
+// Stage order for cascade resets
+const STAGE_ORDER: StageName[] = ['screen', 'structure', 'integrated', 'inBim360', 'drawing2d'];
+
+// Get downstream stages (stages that come after the given stage)
+function getDownstreamStages(stage: StageName): StageName[] {
+  const idx = STAGE_ORDER.indexOf(stage);
+  if (idx === -1) return [];
+  return STAGE_ORDER.slice(idx + 1);
+}
+
 const linksUpdateSchema = z.object({
   modelUrl: z.string().url().nullable().optional(),
   drawingsUrl: z.string().url().nullable().optional(),
+});
+
+const unlockShowSetSchema = z.object({
+  reason: z.string().min(1, 'Unlock reason is required'),
 });
 
 // Initialize default stages
@@ -523,6 +537,14 @@ const updateStage: AuthenticatedHandler = async (event, auth) => {
     const currentStage = currentShowSet.stages[stageName];
     const timestamp = now();
 
+    // Check if ShowSet is locked (completed and not unlocked)
+    if (isShowSetLocked(currentShowSet) && status === 'in_progress') {
+      return forbidden('ShowSet is locked. An admin must unlock it before changes can be made.');
+    }
+
+    // Track if we need to cascade reset (starting work on unlocked ShowSet)
+    const isStartingWorkOnUnlocked = currentShowSet.unlockedAt && status === 'in_progress';
+
     // Check if this is a revision_required -> in_progress transition (version bump)
     // Only auto-increment if skipVersionIncrement is not true
     const isRevisionToInProgress = currentStage.status === 'revision_required' && status === 'in_progress';
@@ -597,6 +619,39 @@ const updateStage: AuthenticatedHandler = async (event, auth) => {
       expressionAttributeValues[':historyEntry'] = [versionHistoryEntry];
     }
 
+    // Handle cascade reset when starting work on an unlocked ShowSet
+    const downstreamStagesToReset: StageName[] = [];
+    if (isStartingWorkOnUnlocked) {
+      // Clear unlock fields
+      updateExpression += ', unlockedAt = :nullValue, unlockedBy = :nullValue, unlockReason = :nullValue';
+      expressionAttributeValues[':nullValue'] = null;
+
+      // Reset downstream stages and increment their versions
+      const downstreamStages = getDownstreamStages(stageName);
+      for (const ds of downstreamStages) {
+        const dsVersionType = getVersionTypeForStage(ds);
+        const resetStage = {
+          status: 'not_started',
+          updatedBy: auth.userId,
+          updatedAt: timestamp,
+        };
+
+        updateExpression += `, stages.#ds_${ds} = :dsReset_${ds}`;
+        expressionAttributeNames[`#ds_${ds}`] = ds;
+        expressionAttributeValues[`:dsReset_${ds}`] = resetStage;
+
+        // Increment version for downstream stage
+        if (dsVersionType) {
+          const currentDsVersion = currentShowSet[dsVersionType] ?? 1;
+          updateExpression += `, #dsVer_${ds} = :dsNewVer_${ds}`;
+          expressionAttributeNames[`#dsVer_${ds}`] = dsVersionType;
+          expressionAttributeValues[`:dsNewVer_${ds}`] = currentDsVersion + 1;
+        }
+
+        downstreamStagesToReset.push(ds);
+      }
+    }
+
     await docClient.send(
       new UpdateCommand({
         TableName: TABLE_NAMES.SHOWSETS,
@@ -640,6 +695,14 @@ const updateStage: AuthenticatedHandler = async (event, auth) => {
         to: newVersion,
         trigger: 'revision_required',
         historyEntryId: versionHistoryEntry?.id,
+      });
+    }
+
+    // Log cascade reset activity
+    if (downstreamStagesToReset.length > 0) {
+      await logActivity(showSetId, auth.userId, auth.name, 'cascade_reset', {
+        triggeredBy: stageName,
+        resetStages: downstreamStagesToReset,
       });
     }
 
@@ -828,6 +891,85 @@ const updateVersion: AuthenticatedHandler = async (event, auth) => {
   }
 };
 
+// Helper to check if ShowSet is locked
+function isShowSetLocked(showSet: ShowSet): boolean {
+  return showSet.stages.drawing2d.status === 'complete' && !showSet.unlockedAt;
+}
+
+// Unlock a ShowSet for revision (Admin only)
+const unlockShowSet: AuthenticatedHandler = async (event, auth) => {
+  try {
+    if (auth.role !== 'admin') {
+      return forbidden('Only admins can unlock ShowSets');
+    }
+
+    const showSetId = event.pathParameters?.id;
+    if (!showSetId) {
+      return validationError('ShowSet ID is required');
+    }
+
+    const body = JSON.parse(event.body ?? '{}');
+    const parsed = unlockShowSetSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return validationError('Invalid request body', {
+        details: parsed.error.message,
+      });
+    }
+
+    const { reason } = parsed.data;
+
+    // Get current ShowSet
+    const current = await docClient.send(
+      new GetCommand({
+        TableName: TABLE_NAMES.SHOWSETS,
+        Key: keys.showSet(showSetId),
+      })
+    );
+
+    if (!current.Item) {
+      return notFound('ShowSet');
+    }
+
+    const currentShowSet = current.Item as ShowSet;
+
+    // Check if ShowSet is locked
+    if (!isShowSetLocked(currentShowSet)) {
+      return validationError('ShowSet is not locked (drawing2d must be complete and not already unlocked)');
+    }
+
+    const timestamp = now();
+
+    // Update ShowSet with unlock info
+    await docClient.send(
+      new UpdateCommand({
+        TableName: TABLE_NAMES.SHOWSETS,
+        Key: keys.showSet(showSetId),
+        UpdateExpression: 'SET unlockedAt = :unlockedAt, unlockedBy = :unlockedBy, unlockReason = :unlockReason, #updatedAt = :updatedAt',
+        ExpressionAttributeNames: {
+          '#updatedAt': 'updatedAt',
+        },
+        ExpressionAttributeValues: {
+          ':unlockedAt': timestamp,
+          ':unlockedBy': auth.userId,
+          ':unlockReason': reason,
+          ':updatedAt': timestamp,
+        },
+      })
+    );
+
+    // Log unlock activity
+    await logActivity(showSetId, auth.userId, auth.name, 'showset_unlocked', {
+      reason,
+    });
+
+    return success({ message: 'ShowSet unlocked for revision' });
+  } catch (err) {
+    console.error('Error unlocking showset:', err);
+    return internalError();
+  }
+};
+
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
@@ -854,6 +996,8 @@ export const handler = async (
       return await wrappedHandler(updateLinks);
     case 'PUT /showsets/{id}/version':
       return await wrappedHandler(updateVersion);
+    case 'POST /showsets/{id}/unlock':
+      return await wrappedHandler(unlockShowSet);
     default:
       return validationError('Unknown endpoint');
   }

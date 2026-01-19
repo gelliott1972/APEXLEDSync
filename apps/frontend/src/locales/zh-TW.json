@@ -57,7 +57,15 @@
     "versions": "版本",
     "versionReason": "版本更改原因",
     "versionReasonPlaceholder": "請描述為什麼要增加版本號...",
-    "versionReasonRequired": "請提供版本更改原因"
+    "versionReasonRequired": "請提供版本更改原因",
+    "locked": "已鎖定",
+    "unlocked": "已解鎖待修改",
+    "unlock": "解鎖修改",
+    "unlockReason": "解鎖原因",
+    "unlockReasonPlaceholder": "請描述為什麼需要修改此展示組...",
+    "unlockWarning": "這將允許團隊成員進行更改。必須提供原因。",
+    "lockedMessage": "此展示組已鎖定。請聯繫管理員解鎖以進行修改。",
+    "cascadeWarning": "開始此階段的工作將重置所有後續階段。"
   },
   "stages": {
     "screen": "螢幕",

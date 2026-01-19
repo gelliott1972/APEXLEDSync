@@ -2,7 +2,6 @@ import * as cdk from 'aws-cdk-lib';
 import * as appsync from 'aws-cdk-lib/aws-appsync';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
-import * as iam from 'aws-cdk-lib/aws-iam';
 import type { Construct } from 'constructs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
@@ -63,10 +62,8 @@ export class AppSyncStack extends cdk.Stack {
       props.sessionsTable
     );
 
-    const usersDataSource = api.addDynamoDbDataSource(
-      'UsersDataSource',
-      props.usersTable
-    );
+    // Users data source - reserved for future user queries
+    api.addDynamoDbDataSource('UsersDataSource', props.usersTable);
 
     // None data source for subscriptions
     const noneDataSource = api.addNoneDataSource('NoneDataSource');

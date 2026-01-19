@@ -57,7 +57,15 @@
     "versions": "Versions",
     "versionReason": "Reason for version change",
     "versionReasonPlaceholder": "Describe why the version is being incremented...",
-    "versionReasonRequired": "Please provide a reason for the version change"
+    "versionReasonRequired": "Please provide a reason for the version change",
+    "locked": "Locked",
+    "unlocked": "Unlocked for revision",
+    "unlock": "Unlock for Revision",
+    "unlockReason": "Reason for unlocking",
+    "unlockReasonPlaceholder": "Describe why the ShowSet needs to be revised...",
+    "unlockWarning": "This will allow team members to make changes. A reason is required.",
+    "lockedMessage": "This ShowSet is locked. Contact an Admin to unlock it for revisions.",
+    "cascadeWarning": "Starting work on this stage will reset all downstream stages."
   },
   "stages": {
     "screen": "Screen",
