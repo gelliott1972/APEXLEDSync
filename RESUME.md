@@ -2,80 +2,67 @@
 
 ## Current State (as of 2026-01-19)
 
-### Branch: `main` (merged from feature/appsync-realtime)
+### Branch: `main`
 
-### Completed Features
-- **ShowSet Locking** - Full implementation complete
-  - Auto-locks when drawing2d status = complete
-  - Lock/unlock icons in table, kanban, and detail views
-  - Admin-only Unlock button with required reason
-  - Cascade reset of downstream stages when work starts on unlocked ShowSet
-  - StartWorkDialog shows locked message or cascade warning
+### What Was Being Fixed
+**Deployment failed** - need to check GitHub Actions error and fix.
 
-- **Custom Domain** - apex.wrangleit.net
-  - ACM certificate created and validated in us-east-1
-  - Route53 A record configured
-  - CloudFront distribution updated
-  - deploy.bat script in infrastructure/ for manual deployments
+The last commit `e0f2ef2` added:
+1. SQS permission for showsets Lambda to send to translation queue
+2. Notes polling while translations pending
+3. Cache invalidation for revision notes
 
-- **AppSync GraphQL** - Infrastructure added
-  - Schema with subscriptions for real-time updates
-  - Apollo Client integration
-  - Fixed subscription output type mismatch
-
-- **GitHub Actions CI/CD** - Optimized workflow
-  - Path-based detection (skips CDK for frontend-only changes)
-  - Fetches Cognito config from CloudFormation (no manual secrets needed)
-  - Added --passWithNoTests for vitest
-  - Builds shared-types before frontend
-
-### Currently Deploying
-GitHub Actions is running. Last push fixed: build shared-types before frontend.
-
-Check status: https://github.com/gelliott1972/APEXLEDSync/actions
-
-### Known Issues
-
-#### Notes Not Saving (Local Dev)
-When running `pnpm dev` locally, notes don't save because there's no local backend server.
-
-**Fix:** Create `apps/frontend/.env.local`:
+### Root Cause Found
+The showsets Lambda was missing `sqs:sendmessage` permission to the translation queue. Error in CloudWatch logs:
 ```
-VITE_API_URL=https://apex.wrangleit.net/api
+AccessDenied: User is not authorized to perform: sqs:sendmessage on resource: unisync-translation-queue
 ```
-This points local frontend to deployed AWS backend.
 
-### Key Files Modified This Session
-- `apps/frontend/src/components/showset/StartWorkDialog.tsx` - Lock check + warnings
-- `apps/frontend/src/components/showset/ShowSetTable.tsx` - Lock icons
-- `apps/frontend/src/components/showset/KanbanBoard.tsx` - Lock icons
-- `apps/frontend/src/components/showset/UnlockShowSetDialog.tsx` - NEW
-- `apps/backend/src/handlers/showsets/index.ts` - Unlock endpoint + cascade logic
-- `.github/workflows/deploy.yml` - Optimized CI/CD
-- `infrastructure/graphql/schema.graphql` - Fixed subscription types
-- `infrastructure/deploy.bat` - Manual deployment script
+### Fix Applied (in last commit)
+`infrastructure/lib/api-stack.ts` line 106:
+```typescript
+props.translationQueue.grantSendMessages(showSetsHandler); // For revision notes
+```
+
+### Issues Being Fixed This Session
+1. **Revision notes not appearing in Notes section** - FIXED (backend now creates note in Notes table)
+2. **Notes throbbing forever** - Translation queue permission missing (fix deployed but failed)
+3. **Notes not refreshing** - Added polling for pending translations
+4. **Unlocked ShowSet stages not available** - FIXED in StartWorkDialog.tsx
+5. **Version increment not working on unlocked ShowSets** - FIXED in StartWorkDialog.tsx
+
+### Files Modified This Session
+- `apps/backend/src/handlers/showsets/index.ts` - Added createRevisionNote function
+- `apps/frontend/src/components/showset/ShowSetDetail.tsx` - Added notes polling + cache invalidation
+- `apps/frontend/src/components/showset/StartWorkDialog.tsx` - Fixed unlocked ShowSet handling
+- `infrastructure/lib/api-stack.ts` - Added SQS permission for showsets Lambda
+- `apps/frontend/.env.local` - Points local frontend to deployed API
+
+### Next Steps
+1. Check GitHub Actions failure and fix
+2. Redeploy
+3. Test revision notes + translations working
 
 ### AWS Resources
 - Certificate ARN: `arn:aws:acm:us-east-1:726966883566:certificate/ce9d9f3d-7dfe-41b8-a04c-812bddaa1977`
 - Hosted Zone ID: `Z10166762BQXM65SWNK23`
 - AWS Profile: `AdministratorAccess-726966883566`
+- Translation Queue: `https://sqs.ap-east-1.amazonaws.com/726966883566/unisync-translation-queue`
 
 ### Quick Commands
 ```bash
-# Local development (frontend only, uses deployed API)
-# First create apps/frontend/.env.local with VITE_API_URL
-pnpm dev
-
-# Manual deploy to AWS
-cd infrastructure && deploy.bat
-
 # Check GitHub Actions
 gh run list --repo gelliott1972/APEXLEDSync
+
+# Check Lambda logs
+MSYS_NO_PATHCONV=1 aws logs filter-log-events --log-group-name "/aws/lambda/unisync-showsets" --filter-pattern "ERROR" --profile AdministratorAccess-726966883566 --region ap-east-1
+
+# Check SQS queue
+aws sqs get-queue-attributes --queue-url "https://sqs.ap-east-1.amazonaws.com/726966883566/unisync-translation-queue" --attribute-names ApproximateNumberOfMessages --profile AdministratorAccess-726966883566 --region ap-east-1
 ```
 
----
-
-## Next Steps (if CI passes)
-1. Test locking feature on deployed site (apex.wrangleit.net)
-2. Test notes functionality on deployed site
-3. Consider adding actual test files to frontend/backend
+### Test Accounts
+| Email | Password | Role |
+|-------|----------|------|
+| grant@candelic.com | Password1234 | Admin |
+| modeller@test.local | TestPass123 | 3D Modeller |

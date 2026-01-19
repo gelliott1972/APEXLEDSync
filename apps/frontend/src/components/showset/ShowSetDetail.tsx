@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { X, ExternalLink, Pencil, Trash2, ChevronDown, ChevronRight, Circle, CheckCircle2, Pause, Eye, UserCheck, AlertTriangle, Send, Lock, Unlock } from 'lucide-react';
-import type { ShowSet, StageName, StageStatus, StageUpdateInput } from '@unisync/shared-types';
+import type { ShowSet, StageName, StageStatus, StageUpdateInput, Note } from '@unisync/shared-types';
 import { showSetsApi, notesApi } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { STAGE_PERMISSIONS, ENGINEER_ALLOWED_STATUSES } from '@unisync/shared-types';
@@ -100,9 +100,9 @@ export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: Sho
     queryFn: () => notesApi.list(showSet.showSetId),
     enabled: open,
     // Poll every 3 seconds while any note is pending translation
-    refetchInterval: (query) => {
-      const data = query.state.data as typeof notes | undefined;
-      const hasPendingTranslations = data?.some(n => n.translationStatus === 'pending');
+    refetchInterval: (query): number | false => {
+      const data = query.state.data as Note[] | undefined;
+      const hasPendingTranslations = data?.some((n: Note) => n.translationStatus === 'pending');
       return hasPendingTranslations ? 3000 : false;
     },
   });
