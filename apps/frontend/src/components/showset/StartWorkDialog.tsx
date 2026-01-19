@@ -123,10 +123,12 @@ function getCurrentVersion(showSet: ShowSet, vt: VersionType): number {
   }
 }
 
-// Check if a stage needs revision work (either has revision_required status or is complete with downstream rejection)
+// Check if a stage needs revision work (revision_required, complete with downstream rejection, or complete on unlocked ShowSet)
 function stageNeedsRevision(showSet: ShowSet, stage: StageName): boolean {
   const status = showSet.stages[stage].status;
-  return status === 'revision_required' || (status === 'complete' && downstreamNeedsRevision(showSet, stage));
+  return status === 'revision_required' ||
+    (status === 'complete' && downstreamNeedsRevision(showSet, stage)) ||
+    (status === 'complete' && !!showSet.unlockedAt);
 }
 
 export function StartWorkDialog({ showSet, open, onClose }: StartWorkDialogProps) {
@@ -155,6 +157,12 @@ export function StartWorkDialog({ showSet, open, onClose }: StartWorkDialogProps
 
       // If stage is complete but downstream needs revision, allow rework
       if (stageInfo.status === 'complete' && downstreamNeedsRevision(showSet, stage)) {
+        return true;
+      }
+
+      // If ShowSet is unlocked for revision, allow working on complete stages
+      // (user unlocked it to make revisions)
+      if (showSet.unlockedAt && stageInfo.status === 'complete') {
         return true;
       }
 
@@ -212,16 +220,17 @@ export function StartWorkDialog({ showSet, open, onClose }: StartWorkDialogProps
     try {
       // Set all selected stages to in_progress if they need to be started/reworked
       // Backend auto-increments version when going revision_required -> in_progress
-      // For "complete" stages with downstream rejection, we need to explicitly increment
+      // For "complete" stages (downstream rejection or unlocked), we need to explicitly increment
       for (const stage of selectedStages) {
         const status = showSet.stages[stage].status;
         const isDownstreamRejection = status === 'complete' && downstreamNeedsRevision(showSet, stage);
+        const isUnlockedRevision = status === 'complete' && !!showSet.unlockedAt;
 
-        // Start work if: not_started, revision_required, or complete (for rework due to downstream rejection)
-        if (status === 'not_started' || status === 'revision_required' || isDownstreamRejection) {
-          // For downstream rejection case, explicitly increment version if user wants it
+        // Start work if: not_started, revision_required, or complete (for rework)
+        if (status === 'not_started' || status === 'revision_required' || isDownstreamRejection || isUnlockedRevision) {
+          // For complete stages (downstream rejection or unlocked), explicitly increment version if user wants it
           // (backend only auto-increments for revision_required -> in_progress)
-          if (isDownstreamRejection && incrementVersion) {
+          if ((isDownstreamRejection || isUnlockedRevision) && incrementVersion) {
             const versionType = getVersionTypeForStage(stage);
             const currentVersion = getCurrentVersion(showSet, versionType);
             const normalizedLang = i18n.language === 'zh-TW' ? 'zh-TW'

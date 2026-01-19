@@ -1,6 +1,7 @@
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { z } from 'zod';
 import { PutCommand, UpdateCommand, DeleteCommand, QueryCommand, GetCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
+import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 import {
   TABLE_NAMES,
   GSI_NAMES,
@@ -17,6 +18,9 @@ import type {
   ShowSetStages,
   VersionType,
   VersionHistoryEntry,
+  Note,
+  Language,
+  TranslationJob,
 } from '@unisync/shared-types';
 import { ENGINEER_ALLOWED_STATUSES } from '@unisync/shared-types';
 import { withAuth, canUpdateStage, canManageLinks, type AuthenticatedHandler } from '../../middleware/authorize.js';
@@ -28,6 +32,81 @@ import {
   internalError,
 } from '../../lib/response.js';
 import { canManageShowSets, isEngineer } from '../../lib/auth.js';
+
+// SQS client for translation queue
+const sqsClient = new SQSClient({
+  region: process.env.AWS_REGION ?? 'ap-east-1',
+});
+
+const TRANSLATION_QUEUE_URL = process.env.TRANSLATION_QUEUE_URL!;
+
+// Helper to get all languages except original
+function getTargetLanguages(original: Language): Language[] {
+  const all: Language[] = ['en', 'zh', 'zh-TW'];
+  return all.filter((lang) => lang !== original);
+}
+
+// Send translation job to SQS
+async function queueTranslation(job: TranslationJob) {
+  await sqsClient.send(
+    new SendMessageCommand({
+      QueueUrl: TRANSLATION_QUEUE_URL,
+      MessageBody: JSON.stringify(job),
+    })
+  );
+}
+
+// Create a revision note in the notes table
+async function createRevisionNote(
+  showSetId: string,
+  _stageName: StageName, // Kept for potential future use (e.g., prefixing note content)
+  content: string,
+  language: Language,
+  userId: string,
+  userName: string
+): Promise<void> {
+  const noteId = generateId();
+  const timestamp = now();
+
+  // Initialize content with original language
+  const noteContent: Record<Language, string> = {
+    en: language === 'en' ? content : '',
+    zh: language === 'zh' ? content : '',
+    'zh-TW': language === 'zh-TW' ? content : '',
+  };
+
+  const note: Note & { PK: string; SK: string } = {
+    ...keys.note(showSetId, timestamp, noteId),
+    noteId,
+    showSetId,
+    authorId: userId,
+    authorName: userName,
+    originalLang: language,
+    content: noteContent,
+    translationStatus: 'pending',
+    attachments: [],
+    isRevisionNote: true,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+
+  await docClient.send(
+    new PutCommand({
+      TableName: TABLE_NAMES.NOTES,
+      Item: note,
+    })
+  );
+
+  // Queue translation job
+  const targetLanguages = getTargetLanguages(language);
+  await queueTranslation({
+    noteId,
+    showSetId,
+    originalLang: language,
+    originalContent: content,
+    targetLanguages,
+  });
+}
 
 // Schemas
 const localizedStringSchema = z.object({
@@ -592,6 +671,16 @@ const updateStage: AuthenticatedHandler = async (event, auth) => {
       stageUpdate.revisionNote = revisionNote;
       stageUpdate.revisionNoteBy = auth.name;
       stageUpdate.revisionNoteAt = timestamp;
+
+      // Also create a note in the notes table
+      await createRevisionNote(
+        showSetId,
+        stageName,
+        revisionNote,
+        revisionNoteLang ?? 'en',
+        auth.userId,
+        auth.name
+      );
     }
 
     // Build the update expression
