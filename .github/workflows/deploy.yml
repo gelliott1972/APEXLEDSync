@@ -134,6 +134,9 @@ jobs:
           echo "user_pool_client_id=$USER_POOL_CLIENT_ID" >> $GITHUB_OUTPUT
           echo "api_url=$API_URL" >> $GITHUB_OUTPUT
 
+      - name: Build shared packages
+        run: pnpm --filter @unisync/shared-types build
+
       - name: Build frontend
         working-directory: apps/frontend
         run: pnpm build
