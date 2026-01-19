@@ -9,7 +9,7 @@ import {
   ttlTimestamp,
 } from '@unisync/db-utils';
 import type { Session, StageName } from '@unisync/shared-types';
-import { SESSION_TTL_SECONDS, STAGE_NAMES } from '@unisync/shared-types';
+import { SESSION_TTL_SECONDS } from '@unisync/shared-types';
 import { withAuth, type AuthenticatedHandler } from '../../middleware/authorize.js';
 import {
   success,
@@ -139,7 +139,7 @@ const heartbeat: AuthenticatedHandler = async (event, auth) => {
   }
 };
 
-const endSession: AuthenticatedHandler = async (event, auth) => {
+const endSession: AuthenticatedHandler = async (_event, auth) => {
   try {
     await docClient.send(
       new DeleteCommand({
@@ -162,17 +162,17 @@ export const handler = async (
   const resource = event.resource;
 
   const wrappedHandler = (fn: AuthenticatedHandler) =>
-    withAuth(fn)(event, {} as never, () => {});
+    withAuth(fn)(event, {} as never, () => {}) as Promise<APIGatewayProxyResult>;
 
   switch (`${method} ${resource}`) {
     case 'GET /sessions':
-      return wrappedHandler(listSessions);
+      return await wrappedHandler(listSessions);
     case 'POST /sessions/start':
-      return wrappedHandler(startSession);
+      return await wrappedHandler(startSession);
     case 'POST /sessions/heartbeat':
-      return wrappedHandler(heartbeat);
+      return await wrappedHandler(heartbeat);
     case 'POST /sessions/end':
-      return wrappedHandler(endSession);
+      return await wrappedHandler(endSession);
     default:
       return validationError('Unknown endpoint');
   }

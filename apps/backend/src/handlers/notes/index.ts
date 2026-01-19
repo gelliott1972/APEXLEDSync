@@ -1,6 +1,6 @@
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { z } from 'zod';
-import { PutCommand, UpdateCommand, DeleteCommand, QueryCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
+import { PutCommand, UpdateCommand, DeleteCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
@@ -221,18 +221,8 @@ const updateNote: AuthenticatedHandler = async (event, auth) => {
 
     const { content } = parsed.data;
 
-    // Find the note (we need to scan since we don't have the full key)
-    // In production, you might want to include showSetId in the request
-    const scanResult = await docClient.send(
-      new QueryCommand({
-        TableName: TABLE_NAMES.NOTES,
-        IndexName: 'GSI1-note-id-index', // Would need to add this GSI
-        KeyConditionExpression: 'noteId = :noteId',
-        ExpressionAttributeValues: {
-          ':noteId': noteId,
-        },
-      })
-    );
+    // Note: In production, you might want to add a GSI for direct noteId lookup
+    // For now, we require showSetId in the query params
 
     // For now, we'll require showSetId in the query params
     const showSetId = event.queryStringParameters?.showSetId;
@@ -601,26 +591,26 @@ export const handler = async (
   const resource = event.resource;
 
   const wrappedHandler = (fn: AuthenticatedHandler) =>
-    withAuth(fn)(event, {} as never, () => {});
+    withAuth(fn)(event, {} as never, () => {}) as Promise<APIGatewayProxyResult>;
 
   switch (`${method} ${resource}`) {
     case 'GET /showsets/{id}/notes':
-      return wrappedHandler(listNotes);
+      return await wrappedHandler(listNotes);
     case 'POST /showsets/{id}/notes':
-      return wrappedHandler(createNote);
+      return await wrappedHandler(createNote);
     case 'PUT /notes/{noteId}':
-      return wrappedHandler(updateNote);
+      return await wrappedHandler(updateNote);
     case 'DELETE /notes/{noteId}':
-      return wrappedHandler(deleteNote);
+      return await wrappedHandler(deleteNote);
     // Attachment endpoints
     case 'POST /notes/{noteId}/attachments/presign':
-      return wrappedHandler(presignUpload);
+      return await wrappedHandler(presignUpload);
     case 'POST /notes/{noteId}/attachments/{attachmentId}/confirm':
-      return wrappedHandler(confirmUpload);
+      return await wrappedHandler(confirmUpload);
     case 'GET /notes/{noteId}/attachments/{attachmentId}':
-      return wrappedHandler(getAttachment);
+      return await wrappedHandler(getAttachment);
     case 'DELETE /notes/{noteId}/attachments/{attachmentId}':
-      return wrappedHandler(deleteAttachment);
+      return await wrappedHandler(deleteAttachment);
     default:
       return validationError('Unknown endpoint');
   }

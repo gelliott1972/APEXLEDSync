@@ -87,13 +87,13 @@ export const handler = async (
   const resource = event.resource;
 
   const wrappedHandler = (fn: AuthenticatedHandler) =>
-    withAuth(fn)(event, {} as never, () => {});
+    withAuth(fn)(event, {} as never, () => {}) as Promise<APIGatewayProxyResult>;
 
   switch (`${method} ${resource}`) {
     case 'GET /showsets/{id}/activity':
-      return wrappedHandler(getShowSetActivity);
+      return await wrappedHandler(getShowSetActivity);
     case 'GET /activity/recent':
-      return wrappedHandler(getRecentActivity);
+      return await wrappedHandler(getRecentActivity);
     default:
       return validationError('Unknown endpoint');
   }

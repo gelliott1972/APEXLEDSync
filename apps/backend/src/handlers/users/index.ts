@@ -7,7 +7,6 @@ import {
   AdminDisableUserCommand,
   AdminAddUserToGroupCommand,
   AdminRemoveUserFromGroupCommand,
-  AdminGetUserCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 import { PutCommand, UpdateCommand, ScanCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
 import {
@@ -17,7 +16,7 @@ import {
   generateId,
   now,
 } from '@unisync/db-utils';
-import type { User, UserRole } from '@unisync/shared-types';
+import type { User } from '@unisync/shared-types';
 import { withAuth, type AuthenticatedHandler } from '../../middleware/authorize.js';
 import {
   success,
@@ -51,7 +50,7 @@ const updateUserSchema = z.object({
 });
 
 // Handlers
-const listUsers: AuthenticatedHandler = async (event, auth) => {
+const listUsers: AuthenticatedHandler = async (_event, auth) => {
   try {
     if (!canManageUsers(auth.role)) {
       return forbidden('Only admins can list users');
@@ -163,6 +162,7 @@ const createUser: AuthenticatedHandler = async (event, auth) => {
       status: 'active',
       preferredLang,
       cognitoSub,
+      canEditVersions: false,
       createdAt: timestamp,
       updatedAt: timestamp,
     };
@@ -391,19 +391,19 @@ export const handler = async (
   const resource = event.resource;
 
   const wrappedHandler = (fn: AuthenticatedHandler) =>
-    withAuth(fn)(event, {} as never, () => {});
+    withAuth(fn)(event, {} as never, () => {}) as Promise<APIGatewayProxyResult>;
 
   switch (`${method} ${resource}`) {
     case 'GET /users':
-      return wrappedHandler(listUsers);
+      return await wrappedHandler(listUsers);
     case 'GET /users/{userId}':
-      return wrappedHandler(getUser);
+      return await wrappedHandler(getUser);
     case 'POST /users':
-      return wrappedHandler(createUser);
+      return await wrappedHandler(createUser);
     case 'PUT /users/{userId}':
-      return wrappedHandler(updateUser);
+      return await wrappedHandler(updateUser);
     case 'DELETE /users/{userId}':
-      return wrappedHandler(deleteUser);
+      return await wrappedHandler(deleteUser);
     default:
       return validationError('Unknown endpoint');
   }

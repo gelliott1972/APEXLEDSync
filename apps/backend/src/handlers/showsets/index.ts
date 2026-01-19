@@ -14,8 +14,6 @@ import type {
   StageStatus,
   StageName,
   Area,
-  LocalizedString,
-  VMItem,
   ShowSetStages,
   VersionType,
   VersionHistoryEntry,
@@ -116,7 +114,6 @@ function createDefaultStages(userId: string): ShowSetStages {
     structure: { ...defaultStage },
     integrated: { ...defaultStage },
     inBim360: { status: 'not_started', updatedBy: userId, updatedAt: timestamp },
-    awaitingClient: { status: 'not_started', updatedBy: userId, updatedAt: timestamp },
     drawing2d: { ...defaultStage },
   };
 }
@@ -838,25 +835,25 @@ export const handler = async (
   const resource = event.resource;
 
   const wrappedHandler = (fn: AuthenticatedHandler) =>
-    withAuth(fn)(event, {} as never, () => {});
+    withAuth(fn)(event, {} as never, () => {}) as Promise<APIGatewayProxyResult>;
 
   switch (`${method} ${resource}`) {
     case 'GET /showsets':
-      return wrappedHandler(listShowSets);
+      return await wrappedHandler(listShowSets);
     case 'POST /showsets':
-      return wrappedHandler(createShowSet);
+      return await wrappedHandler(createShowSet);
     case 'GET /showsets/{id}':
-      return wrappedHandler(getShowSet);
+      return await wrappedHandler(getShowSet);
     case 'PUT /showsets/{id}':
-      return wrappedHandler(updateShowSet);
+      return await wrappedHandler(updateShowSet);
     case 'DELETE /showsets/{id}':
-      return wrappedHandler(deleteShowSet);
+      return await wrappedHandler(deleteShowSet);
     case 'PUT /showsets/{id}/stage/{stage}':
-      return wrappedHandler(updateStage);
+      return await wrappedHandler(updateStage);
     case 'PUT /showsets/{id}/links':
-      return wrappedHandler(updateLinks);
+      return await wrappedHandler(updateLinks);
     case 'PUT /showsets/{id}/version':
-      return wrappedHandler(updateVersion);
+      return await wrappedHandler(updateVersion);
     default:
       return validationError('Unknown endpoint');
   }

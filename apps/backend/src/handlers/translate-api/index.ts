@@ -1,6 +1,6 @@
 import type { APIGatewayProxyHandler } from 'aws-lambda';
 import { TranslateClient, TranslateTextCommand } from '@aws-sdk/client-translate';
-import { success, error } from '../../lib/response.js';
+import { success, unauthorized, validationError, internalError } from '../../lib/response.js';
 import { getAuthContext } from '../../lib/auth.js';
 import type { Language } from '@unisync/shared-types';
 
@@ -51,11 +51,11 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   // Require authentication
   const user = getAuthContext(event);
   if (!user) {
-    return error('Unauthorized', 401);
+    return unauthorized();
   }
 
   if (event.httpMethod !== 'POST') {
-    return error('Method not allowed', 405);
+    return validationError('Method not allowed');
   }
 
   try {
@@ -63,11 +63,11 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     const { text, sourceLanguage, targetLanguages } = body;
 
     if (!text || !sourceLanguage) {
-      return error('Missing required fields: text, sourceLanguage', 400);
+      return validationError('Missing required fields: text, sourceLanguage');
     }
 
     if (!ALL_LANGUAGES.includes(sourceLanguage)) {
-      return error('Invalid sourceLanguage', 400);
+      return validationError('Invalid sourceLanguage');
     }
 
     // Default to translating to all other languages
@@ -102,6 +102,6 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     return success<TranslateResponse>({ translations });
   } catch (err) {
     console.error('Translation error:', err);
-    return error('Translation failed', 500);
+    return internalError('Translation failed');
   }
 };

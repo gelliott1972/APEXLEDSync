@@ -71,7 +71,7 @@ export const handler = async (
   const path = event.resource;
 
   if (method === 'POST' && path === '/auth/update-profile') {
-    return withAuth(updateProfile)(event, {} as never, () => {});
+    return await (withAuth(updateProfile)(event, {} as never, () => {}) as Promise<APIGatewayProxyResult>);
   }
 
   return validationError('Unknown endpoint');
