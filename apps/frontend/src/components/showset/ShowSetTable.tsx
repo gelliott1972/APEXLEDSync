@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Square, Play, MessageSquare, Pause, UserCheck, AlertTriangle } from 'lucide-react';
+import { Square, Play, MessageSquare, Pause, UserCheck, AlertTriangle, Lock, Unlock } from 'lucide-react';
 import type { ShowSet, StageName } from '@unisync/shared-types';
 import { useSessionStore } from '@/stores/session-store';
 import { useUIStore } from '@/stores/ui-store';
@@ -22,6 +22,16 @@ const STAGES: StageName[] = [
   'inBim360',
   'drawing2d',
 ];
+
+// Helper to check if ShowSet is locked
+function isShowSetLocked(showSet: ShowSet): boolean {
+  return showSet.stages.drawing2d.status === 'complete' && !showSet.unlockedAt;
+}
+
+// Helper to check if ShowSet is unlocked for revision
+function isShowSetUnlocked(showSet: ShowSet): boolean {
+  return !!showSet.unlockedAt;
+}
 
 // Get the relevant version for a stage - each stage has its own version
 function getVersionForStage(showSet: ShowSet, stage: StageName): number {
@@ -158,7 +168,17 @@ export function ShowSetTable({ showSets, onSelect, onSelectNotes }: ShowSetTable
               </td>
               <td className="px-2 py-3 text-muted-foreground">{showSet.area}</td>
               <td className="px-2 py-3">{showSet.scene}</td>
-              <td className="px-2 py-3 font-medium">{showSet.showSetId}</td>
+              <td className="px-2 py-3 font-medium">
+                <div className="flex items-center gap-1">
+                  {showSet.showSetId}
+                  {isShowSetLocked(showSet) && (
+                    <Lock className="h-3 w-3 text-amber-600" title={t('showset.locked')} />
+                  )}
+                  {isShowSetUnlocked(showSet) && (
+                    <Unlock className="h-3 w-3 text-emerald-600" title={t('showset.unlocked')} />
+                  )}
+                </div>
+              </td>
               <td className="px-3 py-3 truncate">{getDescription(showSet)}</td>
               {STAGES.map((stage) => {
                 const status = showSet.stages[stage].status;

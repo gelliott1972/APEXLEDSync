@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { X, ExternalLink, Pencil, Trash2, ChevronDown, ChevronRight, Circle, CheckCircle2, Pause, Eye, UserCheck, AlertTriangle, Send } from 'lucide-react';
+import { X, ExternalLink, Pencil, Trash2, ChevronDown, ChevronRight, Circle, CheckCircle2, Pause, Eye, UserCheck, AlertTriangle, Send, Lock, Unlock } from 'lucide-react';
 import type { ShowSet, StageName, StageStatus, StageUpdateInput } from '@unisync/shared-types';
 import { showSetsApi, notesApi } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
@@ -42,6 +42,17 @@ import {
 } from '@/components/ui/tooltip';
 import { NoteList } from '@/components/notes/NoteList';
 import { EditShowSetDialog } from './EditShowSetDialog';
+import { UnlockShowSetDialog } from './UnlockShowSetDialog';
+
+// Helper to check if ShowSet is locked
+function isShowSetLocked(showSet: ShowSet): boolean {
+  return showSet.stages.drawing2d.status === 'complete' && !showSet.unlockedAt;
+}
+
+// Helper to check if ShowSet is unlocked for revision
+function isShowSetUnlocked(showSet: ShowSet): boolean {
+  return !!showSet.unlockedAt;
+}
 
 interface ShowSetDetailProps {
   showSet: ShowSet;
@@ -74,6 +85,7 @@ export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: Sho
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [unlockDialogOpen, setUnlockDialogOpen] = useState(false);
   const [linksExpanded, setLinksExpanded] = useState(false);
   const [stagesExpanded, setStagesExpanded] = useState(!notesOnly);
   const [notesExpanded, setNotesExpanded] = useState(true);
@@ -191,6 +203,9 @@ export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: Sho
 
   const canEdit = user?.role === 'admin' || user?.role === 'bim_coordinator';
   const canDelete = user?.role === 'admin';
+  const canUnlock = user?.role === 'admin' && isShowSetLocked(showSet);
+  const isLocked = isShowSetLocked(showSet);
+  const isUnlocked = isShowSetUnlocked(showSet);
 
   const lang = i18n.language as 'en' | 'zh' | 'zh-TW';
   const description = showSet.description[lang] || showSet.description.en;
@@ -206,8 +221,40 @@ export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: Sho
       />
       <div className="fixed inset-y-0 right-0 w-full max-w-lg bg-background border-l shadow-lg z-50 overflow-y-auto">
       <div className="sticky top-0 bg-background border-b px-4 py-2 flex items-center justify-between z-10">
-        <h2 className="text-lg font-semibold">{showSet.showSetId}</h2>
         <div className="flex items-center gap-2">
+          <h2 className="text-lg font-semibold">{showSet.showSetId}</h2>
+          {isLocked && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Lock className="h-4 w-4 text-amber-600" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{t('showset.locked')}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+          {isUnlocked && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Unlock className="h-4 w-4 text-emerald-600" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{t('showset.unlocked')}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {canUnlock && (
+            <Button variant="outline" size="sm" onClick={() => setUnlockDialogOpen(true)}>
+              <Unlock className="h-4 w-4 mr-1" />
+              {t('showset.unlock')}
+            </Button>
+          )}
           {canEdit && (
             <Button variant="ghost" size="icon" onClick={() => setEditDialogOpen(true)}>
               <Pencil className="h-4 w-4" />
@@ -488,6 +535,13 @@ export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: Sho
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Unlock ShowSet Dialog */}
+      <UnlockShowSetDialog
+        showSet={showSet}
+        open={unlockDialogOpen}
+        onClose={() => setUnlockDialogOpen(false)}
+      />
     </>
   );
 }

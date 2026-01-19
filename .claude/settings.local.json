@@ -12,7 +12,12 @@
       "Bash(npx cdk:*)",
       "Bash(pnpm deploy)",
       "Bash(aws s3 sync:*)",
-      "Bash(aws cloudfront create-invalidation:*)"
+      "Bash(aws cloudfront create-invalidation:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(gh run list:*)",
+      "WebFetch(domain:github.com)"
     ]
   }
 }
