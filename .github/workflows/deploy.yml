@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      force_backend:
+        description: 'Force backend deployment'
+        type: boolean
+        default: false
 
 permissions:
   id-token: write
@@ -14,6 +19,26 @@ env:
   NODE_VERSION: '22'
 
 jobs:
+  # Detect what changed to optimize deployment
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'apps/backend/**'
+              - 'packages/**'
+              - 'infrastructure/**'
+            frontend:
+              - 'apps/frontend/**'
+              - 'packages/shared-types/**'
+
   test:
     runs-on: ubuntu-latest
     steps:
@@ -38,7 +63,8 @@ jobs:
         run: pnpm test
 
   deploy-backend:
-    needs: test
+    needs: [test, changes]
+    if: needs.changes.outputs.backend == 'true' || github.event.inputs.force_backend == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -70,7 +96,12 @@ jobs:
           npx cdk deploy --all --require-approval never
 
   deploy-frontend:
-    needs: deploy-backend
+    needs: [test, changes, deploy-backend]
+    if: |
+      always() &&
+      needs.test.result == 'success' &&
+      (needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true') &&
+      (needs.deploy-backend.result == 'success' || needs.deploy-backend.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
