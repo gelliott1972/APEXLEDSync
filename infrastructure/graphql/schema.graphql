@@ -140,8 +140,8 @@ type Mutation {
   updateLinks(showSetId: String!, input: LinksUpdateInput!): ShowSet
   updateVersion(showSetId: String!, input: VersionUpdateInput!): ShowSet
   startSession(input: SessionStartInput!): Session
-  endSession: Boolean
-  heartbeat(showSetId: String, activity: String, workingStages: [StageName!]): Boolean
+  endSession: Session
+  heartbeat(showSetId: String, activity: String, workingStages: [StageName!]): Session
 }
 
 # Subscriptions for real-time updates
