@@ -99,6 +99,12 @@ export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: Sho
     queryKey: ['notes', showSet.showSetId],
     queryFn: () => notesApi.list(showSet.showSetId),
     enabled: open,
+    // Poll every 3 seconds while any note is pending translation
+    refetchInterval: (query) => {
+      const data = query.state.data as typeof notes | undefined;
+      const hasPendingTranslations = data?.some(n => n.translationStatus === 'pending');
+      return hasPendingTranslations ? 3000 : false;
+    },
   });
 
   const updateStageMutation = useMutation({
@@ -137,8 +143,12 @@ export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: Sho
         });
       }
     },
-    onSettled: () => {
+    onSettled: (_data, _error, variables) => {
       queryClient.invalidateQueries({ queryKey: ['showsets'] });
+      // Also invalidate notes if setting revision_required (creates a note)
+      if (variables.input.status === 'revision_required') {
+        queryClient.invalidateQueries({ queryKey: ['notes', showSet.showSetId] });
+      }
     },
   });
 

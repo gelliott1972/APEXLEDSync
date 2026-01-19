@@ -103,6 +103,7 @@ export class ApiStack extends cdk.Stack {
 
     // ShowSets handler
     const showSetsHandler = createHandler('ShowSets', 'showsets');
+    props.translationQueue.grantSendMessages(showSetsHandler); // For revision notes
 
     // Notes handler
     const notesHandler = createHandler('Notes', 'notes');
