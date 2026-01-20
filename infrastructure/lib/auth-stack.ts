@@ -27,6 +27,7 @@ export class AuthStack extends cdk.Stack {
         },
       },
       customAttributes: {
+        userId: new cognito.StringAttribute({ mutable: false }),
         role: new cognito.StringAttribute({ mutable: true }),
         preferredLang: new cognito.StringAttribute({ mutable: true }),
       },
