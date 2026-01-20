@@ -124,6 +124,7 @@ export class ApiStack extends cdk.Stack {
           'cognito-idp:AdminUpdateUserAttributes',
           'cognito-idp:AdminDisableUser',
           'cognito-idp:AdminEnableUser',
+          'cognito-idp:AdminDeleteUser',
           'cognito-idp:AdminAddUserToGroup',
           'cognito-idp:AdminRemoveUserFromGroup',
           'cognito-idp:AdminGetUser',

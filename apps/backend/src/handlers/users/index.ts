@@ -5,10 +5,11 @@ import {
   AdminCreateUserCommand,
   AdminUpdateUserAttributesCommand,
   AdminDisableUserCommand,
+  AdminDeleteUserCommand,
   AdminAddUserToGroupCommand,
   AdminRemoveUserFromGroupCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
-import { PutCommand, UpdateCommand, ScanCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
+import { PutCommand, UpdateCommand, ScanCommand, GetCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
 import {
   TABLE_NAMES,
   docClient,
@@ -360,7 +361,7 @@ const updateUser: AuthenticatedHandler = async (event, auth) => {
 const deleteUser: AuthenticatedHandler = async (event, auth) => {
   try {
     if (!canManageUsers(auth.role)) {
-      return forbidden('Only admins can deactivate users');
+      return forbidden('Only admins can delete users');
     }
 
     const userId = event.pathParameters?.userId;
@@ -382,34 +383,25 @@ const deleteUser: AuthenticatedHandler = async (event, auth) => {
 
     const existingUser = existing.Item as User;
 
-    // Disable in Cognito (soft delete)
+    // Delete from Cognito
     await cognitoClient.send(
-      new AdminDisableUserCommand({
+      new AdminDeleteUserCommand({
         UserPoolId: USER_POOL_ID,
         Username: existingUser.email,
       })
     );
 
-    // Update status in DynamoDB
+    // Delete from DynamoDB
     await docClient.send(
-      new UpdateCommand({
+      new DeleteCommand({
         TableName: TABLE_NAMES.USERS,
         Key: keys.user(userId),
-        UpdateExpression: 'SET #status = :status, #updatedAt = :updatedAt',
-        ExpressionAttributeNames: {
-          '#status': 'status',
-          '#updatedAt': 'updatedAt',
-        },
-        ExpressionAttributeValues: {
-          ':status': 'deactivated',
-          ':updatedAt': now(),
-        },
       })
     );
 
-    return success({ message: 'User deactivated successfully' });
+    return success({ message: 'User deleted successfully' });
   } catch (err) {
-    console.error('Error deactivating user:', err);
+    console.error('Error deleting user:', err);
     return internalError();
   }
 };

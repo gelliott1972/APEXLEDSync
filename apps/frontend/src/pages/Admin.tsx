@@ -59,7 +59,7 @@ export function AdminPage() {
     },
   });
 
-  const deactivateMutation = useMutation({
+  const deleteMutation = useMutation({
     mutationFn: (userId: string) => usersApi.delete(userId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
@@ -67,7 +67,7 @@ export function AdminPage() {
       setDeleteError(null);
     },
     onError: (error: Error) => {
-      setDeleteError(error.message || 'Failed to deactivate user');
+      setDeleteError(error.message || 'Failed to delete user');
     },
   });
 
@@ -252,9 +252,9 @@ export function AdminPage() {
       <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t('admin.deactivateUser')}</AlertDialogTitle>
+            <AlertDialogTitle>{t('admin.deleteUser')}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t('admin.deactivateConfirm', { name: userToDelete?.name, email: userToDelete?.email })}
+              {t('admin.deleteConfirm', { name: userToDelete?.name, email: userToDelete?.email })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           {deleteError && (
@@ -265,14 +265,14 @@ export function AdminPage() {
               {t('common.cancel')}
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => userToDelete && deactivateMutation.mutate(userToDelete.userId)}
-              disabled={deactivateMutation.isPending}
+              onClick={() => userToDelete && deleteMutation.mutate(userToDelete.userId)}
+              disabled={deleteMutation.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deactivateMutation.isPending ? (
+              {deleteMutation.isPending ? (
                 <><Loader2 className="h-4 w-4 animate-spin mr-2" />{t('common.loading')}</>
               ) : (
-                t('admin.deactivate')
+                t('common.delete')
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
