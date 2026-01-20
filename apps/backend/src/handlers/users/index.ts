@@ -33,12 +33,27 @@ const cognitoClient = new CognitoIdentityProviderClient({
 
 const USER_POOL_ID = process.env.USER_POOL_ID!;
 
+// Generate a secure temporary password
+function generateTempPassword(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  const specials = '!@#$%';
+  let password = '';
+  for (let i = 0; i < 10; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  // Add a special character and number to meet Cognito requirements
+  password += specials.charAt(Math.floor(Math.random() * specials.length));
+  password += Math.floor(Math.random() * 10);
+  return password;
+}
+
 // Schemas
 const createUserSchema = z.object({
   email: z.string().email(),
   name: z.string().min(1).max(100),
   role: z.enum(['admin', 'bim_coordinator', 'engineer', '3d_modeller', '2d_drafter']),
   preferredLang: z.enum(['en', 'zh', 'zh-TW']).optional().default('en'),
+  skipEmail: z.boolean().optional().default(false), // If true, return temp password for clipboard invite
 });
 
 const updateUserSchema = z.object({
@@ -117,9 +132,12 @@ const createUser: AuthenticatedHandler = async (event, auth) => {
       });
     }
 
-    const { email, name, role, preferredLang } = parsed.data;
+    const { email, name, role, preferredLang, skipEmail } = parsed.data;
     const userId = generateId();
     const timestamp = now();
+
+    // Generate temp password if skipping email
+    const tempPassword = skipEmail ? generateTempPassword() : undefined;
 
     // Create Cognito user
     const cognitoResult = await cognitoClient.send(
@@ -134,7 +152,15 @@ const createUser: AuthenticatedHandler = async (event, auth) => {
           { Name: 'custom:role', Value: role },
           { Name: 'custom:preferredLang', Value: preferredLang },
         ],
-        DesiredDeliveryMediums: ['EMAIL'],
+        // If skipEmail, suppress welcome message and use our temp password
+        ...(skipEmail
+          ? {
+              MessageAction: 'SUPPRESS',
+              TemporaryPassword: tempPassword,
+            }
+          : {
+              DesiredDeliveryMediums: ['EMAIL'],
+            }),
       })
     );
 
@@ -174,7 +200,11 @@ const createUser: AuthenticatedHandler = async (event, auth) => {
       })
     );
 
-    return success(user, 201);
+    // Return user with temp password if email was skipped (for clipboard invite)
+    return success(
+      skipEmail ? { ...user, tempPassword } : user,
+      201
+    );
   } catch (err: any) {
     if (err.name === 'UsernameExistsException') {
       return validationError('A user with this email already exists');

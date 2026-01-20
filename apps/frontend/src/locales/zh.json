@@ -16,7 +16,9 @@
     "clear": "清除",
     "error": "错误",
     "success": "成功",
-    "optional": "可选"
+    "optional": "可选",
+    "copied": "已复制！",
+    "copyToClipboard": "复制到剪贴板"
   },
   "nav": {
     "dashboard": "仪表板",
@@ -135,9 +137,16 @@
     "status": "状态",
     "active": "活跃",
     "deactivated": "已停用",
+    "deactivate": "停用",
+    "deactivateUser": "停用用户",
+    "deactivateConfirm": "确定要停用 {{name}} ({{email}}) 吗？他们将无法再登录。",
     "canEditVersions": "编辑版本",
     "canEditVersionsTooltip": "允许用户手动编辑版本号",
     "tempPasswordNote": "临时密码将通过电子邮件发送给用户。首次登录时需要设置新密码。",
+    "skipEmailInvite": "不发送电子邮件 - 改为复制邀请到剪贴板",
+    "clipboardInviteNote": "将显示包含登录凭据的邀请消息，供您复制并通过微信/WhatsApp发送。",
+    "userCreated": "用户已创建",
+    "copyInviteMessage": "复制此邀请消息发送给用户：",
     "alwaysEnabled": "始终开启"
   },
   "roles": {

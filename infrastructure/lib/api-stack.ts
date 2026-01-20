@@ -258,6 +258,7 @@ export class ApiStack extends cdk.Stack {
     // Users endpoints (Admin only)
     const users = this.api.root.addResource('users');
     users.addMethod('GET', usersIntegration, authOptions);
+    users.addMethod('POST', usersIntegration, authOptions);
 
     const userById = users.addResource('{userId}');
     userById.addMethod('GET', usersIntegration, authOptions);

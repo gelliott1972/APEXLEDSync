@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2, FileEdit, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, FileEdit, Loader2, Copy, Check } from 'lucide-react';
 import { usersApi } from '@/lib/api';
 import type { User, UserRole, Language } from '@unisync/shared-types';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -17,12 +18,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export function AdminPage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [inviteData, setInviteData] = useState<{ email: string; name: string; tempPassword: string } | null>(null);
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['users'],
@@ -31,9 +45,17 @@ export function AdminPage() {
 
   const createUserMutation = useMutation({
     mutationFn: usersApi.create,
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setShowCreateDialog(false);
+      // If we got a temp password back, show the invite dialog
+      if (data.tempPassword) {
+        setInviteData({
+          email: data.email,
+          name: data.name,
+          tempPassword: data.tempPassword,
+        });
+      }
     },
   });
 
@@ -41,6 +63,11 @@ export function AdminPage() {
     mutationFn: (userId: string) => usersApi.delete(userId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
+      setUserToDelete(null);
+      setDeleteError(null);
+    },
+    onError: (error: Error) => {
+      setDeleteError(error.message || 'Failed to deactivate user');
     },
   });
 
@@ -172,7 +199,7 @@ export function AdminPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => deactivateMutation.mutate(user.userId)}
+                            onClick={() => setUserToDelete(user)}
                             disabled={user.status === 'deactivated'}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -209,6 +236,48 @@ export function AdminPage() {
           t={t}
         />
       )}
+
+      {/* Invite Dialog - shows temp password for clipboard */}
+      {inviteData && (
+        <InviteDialog
+          email={inviteData.email}
+          name={inviteData.name}
+          tempPassword={inviteData.tempPassword}
+          onClose={() => setInviteData(null)}
+          t={t}
+        />
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('admin.deactivateUser')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('admin.deactivateConfirm', { name: userToDelete?.name, email: userToDelete?.email })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {deleteError && (
+            <p className="text-sm text-destructive">{deleteError}</p>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setUserToDelete(null); setDeleteError(null); }}>
+              {t('common.cancel')}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => userToDelete && deactivateMutation.mutate(userToDelete.userId)}
+              disabled={deactivateMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deactivateMutation.isPending ? (
+                <><Loader2 className="h-4 w-4 animate-spin mr-2" />{t('common.loading')}</>
+              ) : (
+                t('admin.deactivate')
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -314,7 +383,7 @@ function CreateUserDialog({
   t,
 }: {
   onClose: () => void;
-  onSave: (data: { email: string; name: string; role: UserRole; preferredLang: Language }) => void;
+  onSave: (data: { email: string; name: string; role: UserRole; preferredLang: Language; skipEmail?: boolean }) => void;
   isPending: boolean;
   error?: string;
   t: (key: string) => string;
@@ -323,10 +392,11 @@ function CreateUserDialog({
   const [name, setName] = useState('');
   const [role, setRole] = useState<UserRole>('3d_modeller');
   const [preferredLang, setPreferredLang] = useState<Language>('en');
+  const [skipEmail, setSkipEmail] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({ email, name, role, preferredLang });
+    onSave({ email, name, role, preferredLang, skipEmail });
   };
 
   return (
@@ -385,8 +455,19 @@ function CreateUserDialog({
             </Select>
           </div>
 
+          <div className="flex items-center space-x-2 pt-2">
+            <Checkbox
+              id="skipEmail"
+              checked={skipEmail}
+              onCheckedChange={(checked) => setSkipEmail(checked === true)}
+            />
+            <Label htmlFor="skipEmail" className="text-sm cursor-pointer">
+              {t('admin.skipEmailInvite')}
+            </Label>
+          </div>
+
           <p className="text-xs text-muted-foreground">
-            {t('admin.tempPasswordNote')}
+            {skipEmail ? t('admin.clipboardInviteNote') : t('admin.tempPasswordNote')}
           </p>
 
           {error && (
@@ -406,6 +487,77 @@ function CreateUserDialog({
             </Button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+function InviteDialog({
+  email,
+  name,
+  tempPassword,
+  onClose,
+  t,
+}: {
+  email: string;
+  name: string;
+  tempPassword: string;
+  onClose: () => void;
+  t: (key: string) => string;
+}) {
+  const [copied, setCopied] = useState(false);
+  const appUrl = window.location.origin;
+
+  const inviteMessage = `Hi ${name},
+
+You've been invited to UniSync BIM Coordination Board.
+
+Login URL: ${appUrl}
+Email: ${email}
+Temporary Password: ${tempPassword}
+
+You'll be asked to set a new password on your first login.`;
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(inviteMessage);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50" onClick={onClose}>
+      <div
+        className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background rounded-lg shadow-lg w-full max-w-md p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-lg font-semibold mb-4">{t('admin.userCreated')}</h2>
+
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            {t('admin.copyInviteMessage')}
+          </p>
+
+          <div className="bg-muted rounded-md p-3 text-sm font-mono whitespace-pre-wrap break-all">
+            {inviteMessage}
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={onClose}>
+              {t('common.close')}
+            </Button>
+            <Button onClick={handleCopy}>
+              {copied ? (
+                <><Check className="h-4 w-4 mr-2" />{t('common.copied')}</>
+              ) : (
+                <><Copy className="h-4 w-4 mr-2" />{t('common.copyToClipboard')}</>
+              )}
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );

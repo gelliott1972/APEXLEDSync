@@ -16,7 +16,9 @@
     "clear": "Clear",
     "error": "Error",
     "success": "Success",
-    "optional": "optional"
+    "optional": "optional",
+    "copied": "Copied!",
+    "copyToClipboard": "Copy to Clipboard"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -135,9 +137,16 @@
     "status": "Status",
     "active": "Active",
     "deactivated": "Deactivated",
+    "deactivate": "Deactivate",
+    "deactivateUser": "Deactivate User",
+    "deactivateConfirm": "Are you sure you want to deactivate {{name}} ({{email}})? They will no longer be able to log in.",
     "canEditVersions": "Edit Ver.",
     "canEditVersionsTooltip": "Allow user to manually edit version numbers",
     "tempPasswordNote": "A temporary password will be emailed to the user. They will be required to set a new password on first login.",
+    "skipEmailInvite": "Don't send email - copy invite to clipboard instead",
+    "clipboardInviteNote": "An invite message with login credentials will be shown for you to copy and send via WeChat/WhatsApp.",
+    "userCreated": "User Created",
+    "copyInviteMessage": "Copy this invite message to send to the user:",
     "alwaysEnabled": "Always on"
   },
   "roles": {

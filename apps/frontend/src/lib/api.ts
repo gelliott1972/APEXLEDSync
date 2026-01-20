@@ -234,8 +234,8 @@ export const usersApi = {
 
   get: (userId: string) => request<User>(`/users/${userId}`),
 
-  create: (input: { email: string; name: string; role: UserRole; preferredLang?: Language }) =>
-    request<User>('/users', {
+  create: (input: { email: string; name: string; role: UserRole; preferredLang?: Language; skipEmail?: boolean }) =>
+    request<User & { tempPassword?: string }>('/users', {
       method: 'POST',
       body: JSON.stringify(input),
     }),

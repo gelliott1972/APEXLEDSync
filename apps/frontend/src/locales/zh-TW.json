@@ -16,7 +16,9 @@
     "clear": "清除",
     "error": "錯誤",
     "success": "成功",
-    "optional": "可選"
+    "optional": "可選",
+    "copied": "已複製！",
+    "copyToClipboard": "複製到剪貼簿"
   },
   "nav": {
     "dashboard": "儀表板",
@@ -135,9 +137,16 @@
     "status": "狀態",
     "active": "活躍",
     "deactivated": "已停用",
+    "deactivate": "停用",
+    "deactivateUser": "停用使用者",
+    "deactivateConfirm": "確定要停用 {{name}} ({{email}}) 嗎？他們將無法再登入。",
     "canEditVersions": "編輯版本",
     "canEditVersionsTooltip": "允許使用者手動編輯版本號",
     "tempPasswordNote": "臨時密碼將通過電子郵件發送給使用者。首次登入時需要設定新密碼。",
+    "skipEmailInvite": "不發送電子郵件 - 改為複製邀請到剪貼簿",
+    "clipboardInviteNote": "將顯示包含登入憑據的邀請訊息，供您複製並通過微信/WhatsApp發送。",
+    "userCreated": "使用者已建立",
+    "copyInviteMessage": "複製此邀請訊息發送給使用者：",
     "alwaysEnabled": "始終開啟"
   },
   "roles": {
