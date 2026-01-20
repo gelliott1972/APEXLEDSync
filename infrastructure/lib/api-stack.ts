@@ -128,6 +128,7 @@ export class ApiStack extends cdk.Stack {
           'cognito-idp:AdminAddUserToGroup',
           'cognito-idp:AdminRemoveUserFromGroup',
           'cognito-idp:AdminGetUser',
+          'cognito-idp:AdminSetUserPassword',
         ],
         resources: [props.userPool.userPoolArn],
       })
@@ -268,6 +269,9 @@ export class ApiStack extends cdk.Stack {
     userById.addMethod('GET', usersIntegration, authOptions);
     userById.addMethod('PUT', usersIntegration, authOptions);
     userById.addMethod('DELETE', usersIntegration, authOptions);
+
+    const resetPassword = userById.addResource('reset-password');
+    resetPassword.addMethod('POST', usersIntegration, authOptions);
 
     // Outputs
     new cdk.CfnOutput(this, 'ApiUrl', {

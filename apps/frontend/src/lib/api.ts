@@ -252,6 +252,15 @@ export const usersApi = {
 
   delete: (userId: string) =>
     request<void>(`/users/${userId}`, { method: 'DELETE' }),
+
+  resetPassword: (userId: string, skipEmail = true) =>
+    request<{ message: string; tempPassword: string; email: string; name: string }>(
+      `/users/${userId}/reset-password`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ skipEmail }),
+      }
+    ),
 };
 
 // Profile API

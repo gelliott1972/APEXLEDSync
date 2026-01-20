@@ -108,6 +108,18 @@ export function AdminPage() {
     },
   });
 
+  const resetPasswordMutation = useMutation({
+    mutationFn: (userId: string) => usersApi.resetPassword(userId, true),
+    onSuccess: (data) => {
+      setEditingUser(null);
+      setInviteData({
+        email: data.email,
+        name: data.name,
+        tempPassword: data.tempPassword,
+      });
+    },
+  });
+
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
       case 'admin':
@@ -221,7 +233,9 @@ export function AdminPage() {
           user={editingUser}
           onClose={() => setEditingUser(null)}
           onSave={(data) => updateUserMutation.mutate({ userId: editingUser.userId, data })}
+          onResetPassword={() => resetPasswordMutation.mutate(editingUser.userId)}
           isPending={updateUserMutation.isPending}
+          isResettingPassword={resetPasswordMutation.isPending}
           t={t}
         />
       )}
@@ -286,13 +300,17 @@ function EditUserDialog({
   user,
   onClose,
   onSave,
+  onResetPassword,
   isPending,
+  isResettingPassword,
   t,
 }: {
   user: User;
   onClose: () => void;
   onSave: (data: { name?: string; role?: UserRole; preferredLang?: Language }) => void;
+  onResetPassword: () => void;
   isPending: boolean;
+  isResettingPassword: boolean;
   t: (key: string) => string;
 }) {
   const [name, setName] = useState(user.name);
@@ -357,6 +375,26 @@ function EditUserDialog({
               </SelectContent>
             </Select>
           </div>
+
+          {/* Reset Password Section */}
+          <div className="border-t pt-4">
+            <Label className="text-sm">{t('admin.resetPassword')}</Label>
+            <p className="text-xs text-muted-foreground mb-2">{t('admin.resetPasswordDesc')}</p>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onResetPassword}
+              disabled={isResettingPassword}
+              className="w-full"
+            >
+              {isResettingPassword ? (
+                <><Loader2 className="h-4 w-4 animate-spin mr-2" />{t('common.loading')}</>
+              ) : (
+                t('admin.resetPassword')
+              )}
+            </Button>
+          </div>
+
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={onClose}>
               {t('common.cancel')}

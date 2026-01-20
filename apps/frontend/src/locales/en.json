@@ -143,7 +143,9 @@
     "clipboardInviteNote": "An invite message with login credentials will be shown for you to copy and send via WeChat/WhatsApp.",
     "userCreated": "User Created",
     "copyInviteMessage": "Copy this invite message to send to the user:",
-    "alwaysEnabled": "Always on"
+    "alwaysEnabled": "Always on",
+    "resetPassword": "Reset Password",
+    "resetPasswordDesc": "Generate a new temporary password for this user. They will need to set a new password on next login."
   },
   "roles": {
     "admin": "Admin",

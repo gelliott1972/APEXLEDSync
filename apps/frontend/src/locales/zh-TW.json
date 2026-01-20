@@ -143,7 +143,9 @@
     "clipboardInviteNote": "將顯示包含登入憑據的邀請訊息，供您複製並通過微信/WhatsApp發送。",
     "userCreated": "使用者已建立",
     "copyInviteMessage": "複製此邀請訊息發送給使用者：",
-    "alwaysEnabled": "始終開啟"
+    "alwaysEnabled": "始終開啟",
+    "resetPassword": "重設密碼",
+    "resetPasswordDesc": "為此使用者產生新的臨時密碼。下次登入時需要設定新密碼。"
   },
   "roles": {
     "admin": "管理員",

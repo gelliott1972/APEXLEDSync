@@ -143,7 +143,9 @@
     "clipboardInviteNote": "将显示包含登录凭据的邀请消息，供您复制并通过微信/WhatsApp发送。",
     "userCreated": "用户已创建",
     "copyInviteMessage": "复制此邀请消息发送给用户：",
-    "alwaysEnabled": "始终开启"
+    "alwaysEnabled": "始终开启",
+    "resetPassword": "重置密码",
+    "resetPasswordDesc": "为此用户生成新的临时密码。下次登录时需要设置新密码。"
   },
   "roles": {
     "admin": "管理员",

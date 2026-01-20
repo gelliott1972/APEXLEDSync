@@ -8,6 +8,7 @@ import {
   AdminDeleteUserCommand,
   AdminAddUserToGroupCommand,
   AdminRemoveUserFromGroupCommand,
+  AdminSetUserPasswordCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 import { PutCommand, UpdateCommand, ScanCommand, GetCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
 import {
@@ -63,6 +64,10 @@ const updateUserSchema = z.object({
   preferredLang: z.enum(['en', 'zh', 'zh-TW']).optional(),
   status: z.enum(['active', 'deactivated']).optional(),
   canEditVersions: z.boolean().optional(),
+});
+
+const resetPasswordSchema = z.object({
+  skipEmail: z.boolean().optional().default(false), // If true, return temp password for clipboard
 });
 
 // Handlers
@@ -406,6 +411,80 @@ const deleteUser: AuthenticatedHandler = async (event, auth) => {
   }
 };
 
+const resetPassword: AuthenticatedHandler = async (event, auth) => {
+  try {
+    if (!canManageUsers(auth.role)) {
+      return forbidden('Only admins can reset passwords');
+    }
+
+    const userId = event.pathParameters?.userId;
+    if (!userId) {
+      return validationError('User ID is required');
+    }
+
+    const body = JSON.parse(event.body ?? '{}');
+    const parsed = resetPasswordSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return validationError('Invalid request body', {
+        details: parsed.error.message,
+      });
+    }
+
+    const { skipEmail } = parsed.data;
+
+    // Get existing user
+    const existing = await docClient.send(
+      new GetCommand({
+        TableName: TABLE_NAMES.USERS,
+        Key: keys.user(userId),
+      })
+    );
+
+    if (!existing.Item) {
+      return notFound('User');
+    }
+
+    const existingUser = existing.Item as User;
+
+    // Generate new temporary password
+    const tempPassword = generateTempPassword();
+
+    // Set the new password in Cognito (temporary = true means user must change on next login)
+    await cognitoClient.send(
+      new AdminSetUserPasswordCommand({
+        UserPoolId: USER_POOL_ID,
+        Username: existingUser.email,
+        Password: tempPassword,
+        Permanent: false, // Temporary password - user must change on next login
+      })
+    );
+
+    // If skipEmail, return the temp password for clipboard
+    // Otherwise, we'd need to send an email (not implemented - Cognito doesn't auto-send for password resets)
+    if (skipEmail) {
+      return success({
+        message: 'Password reset successfully',
+        tempPassword,
+        email: existingUser.email,
+        name: existingUser.name,
+      });
+    }
+
+    // TODO: Implement email sending via SES if needed
+    // For now, always return the temp password since we don't have email sending set up
+    return success({
+      message: 'Password reset successfully',
+      tempPassword,
+      email: existingUser.email,
+      name: existingUser.name,
+    });
+  } catch (err) {
+    console.error('Error resetting password:', err);
+    return internalError();
+  }
+};
+
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
@@ -426,6 +505,8 @@ export const handler = async (
       return await wrappedHandler(updateUser);
     case 'DELETE /users/{userId}':
       return await wrappedHandler(deleteUser);
+    case 'POST /users/{userId}/reset-password':
+      return await wrappedHandler(resetPassword);
     default:
       return validationError('Unknown endpoint');
   }
