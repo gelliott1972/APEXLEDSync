@@ -101,10 +101,9 @@ export interface ShowSet {
   integratedVersion?: number;
   bim360Version?: number;
   versionHistory: VersionHistoryEntry[];
-  // Locking - ShowSet locks when drawing2d.status === 'complete'
-  unlockedAt?: string;
-  unlockedBy?: string;
-  unlockReason?: string;
+  // Locking - simple flag, admin controls
+  lockedAt?: string;
+  lockedBy?: string;
   createdAt: string;
   updatedAt: string;
 }

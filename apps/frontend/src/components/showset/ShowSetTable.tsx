@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Square, Play, MessageSquare, Lock, Unlock, Minus, Loader2, Check, AlertTriangle } from 'lucide-react';
+import { Square, Play, MessageSquare, Lock, Minus, Loader2, Check, AlertTriangle, Clock, Pause } from 'lucide-react';
 import type { ShowSet, StageName, StageStatus } from '@unisync/shared-types';
 import { useSessionStore } from '@/stores/session-store';
 import { Button } from '@/components/ui/button';
@@ -21,14 +21,9 @@ const STAGES: StageName[] = [
   'drawing2d',
 ];
 
-// Helper to check if ShowSet is locked
+// Helper to check if ShowSet is locked (simple flag - admin controls)
 function isShowSetLocked(showSet: ShowSet): boolean {
-  return showSet.stages.drawing2d.status === 'complete' && !showSet.unlockedAt;
-}
-
-// Helper to check if ShowSet is unlocked for revision
-function isShowSetUnlocked(showSet: ShowSet): boolean {
-  return !!showSet.unlockedAt;
+  return !!showSet.lockedAt;
 }
 
 // Get the relevant version for a stage - 3 deliverables (inBim360 has no version)
@@ -65,6 +60,11 @@ function StageCell({ status, version, isBeingWorked }: {
         return <Check className="h-4 w-4" />;
       case 'revision_required':
         return <AlertTriangle className="h-4 w-4" />;
+      case 'engineer_review':
+      case 'client_review':
+        return <Clock className="h-4 w-4" />;
+      case 'on_hold':
+        return <Pause className="h-4 w-4" />;
       default:
         return <Minus className="h-4 w-4" />;
     }
@@ -207,11 +207,6 @@ export function ShowSetTable({ showSets, onSelect, onSelectNotes }: ShowSetTable
                   {isShowSetLocked(showSet) && (
                     <span title={t('showset.locked')}>
                       <Lock className="h-3 w-3 text-amber-600" />
-                    </span>
-                  )}
-                  {isShowSetUnlocked(showSet) && (
-                    <span title={t('showset.unlocked')}>
-                      <Unlock className="h-3 w-3 text-emerald-600" />
                     </span>
                   )}
                 </div>

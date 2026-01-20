@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Lock, AlertTriangle } from 'lucide-react';
+import { Lock } from 'lucide-react';
 import type { ShowSet, StageName, StageStatus, UserRole } from '@unisync/shared-types';
 import { STAGE_PERMISSIONS } from '@unisync/shared-types';
 import { showSetsApi } from '@/lib/api';
@@ -19,14 +19,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 
-// Helper to check if ShowSet is locked (complete and not unlocked)
+// Helper to check if ShowSet is locked (simple flag - admin controls)
 function isShowSetLocked(showSet: ShowSet): boolean {
-  return showSet.stages.drawing2d.status === 'complete' && !showSet.unlockedAt;
-}
-
-// Helper to check if ShowSet is unlocked for revision
-function isShowSetUnlocked(showSet: ShowSet): boolean {
-  return !!showSet.unlockedAt;
+  return !!showSet.lockedAt;
 }
 
 interface StartWorkDialogProps {
@@ -100,12 +95,6 @@ export function StartWorkDialog({ showSet, open, onClose }: StartWorkDialogProps
         return true;
       }
 
-      // If ShowSet is unlocked for revision, allow working on complete stages
-      // (user unlocked it to make revisions)
-      if (showSet.unlockedAt && stageInfo.status === 'complete') {
-        return true;
-      }
-
       // Otherwise check if status is workable for this role
       return stageInfo.status !== 'complete' && canWorkOnStatus(stageInfo.status, currentRole);
     });
@@ -141,10 +130,9 @@ export function StartWorkDialog({ showSet, open, onClose }: StartWorkDialogProps
       for (const stage of selectedStages) {
         const status = showSet.stages[stage].status;
         const isDownstreamRejection = status === 'complete' && downstreamNeedsRevision(showSet, stage);
-        const isUnlockedRevision = status === 'complete' && !!showSet.unlockedAt;
 
-        // Start work if: not_started, revision_required, or complete (for rework)
-        if (status === 'not_started' || status === 'revision_required' || isDownstreamRejection || isUnlockedRevision) {
+        // Start work if: not_started, revision_required, or complete (for rework due to downstream rejection)
+        if (status === 'not_started' || status === 'revision_required' || isDownstreamRejection) {
           await updateStageMutation.mutateAsync({
             stage,
             status: 'in_progress',
@@ -194,16 +182,6 @@ export function StartWorkDialog({ showSet, open, onClose }: StartWorkDialogProps
               <Lock className="h-5 w-5 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
               <div className="text-sm text-amber-800 dark:text-amber-200">
                 <p className="font-medium">{t('showset.lockedMessage')}</p>
-              </div>
-            </div>
-          )}
-
-          {/* Unlocked for revision cascade warning */}
-          {isShowSetUnlocked(showSet) && (
-            <div className="flex items-start gap-3 p-3 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded-md">
-              <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-500 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-orange-800 dark:text-orange-200">
-                <p className="font-medium">{t('showset.cascadeWarning')}</p>
               </div>
             </div>
           )}

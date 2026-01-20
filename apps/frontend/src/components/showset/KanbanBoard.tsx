@@ -1,17 +1,12 @@
 import { useTranslation } from 'react-i18next';
-import { Lock, Unlock } from 'lucide-react';
+import { Lock } from 'lucide-react';
 import type { ShowSet, StageStatus, StageName } from '@unisync/shared-types';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
-// Helper to check if ShowSet is locked
+// Helper to check if ShowSet is locked (simple flag - admin controls)
 function isShowSetLocked(showSet: ShowSet): boolean {
-  return showSet.stages.drawing2d.status === 'complete' && !showSet.unlockedAt;
-}
-
-// Helper to check if ShowSet is unlocked for revision
-function isShowSetUnlocked(showSet: ShowSet): boolean {
-  return !!showSet.unlockedAt;
+  return !!showSet.lockedAt;
 }
 
 interface KanbanBoardProps {
@@ -192,7 +187,6 @@ function KanbanCard({
         <span className="flex items-center gap-1 whitespace-nowrap">
           {compactId}
           {isShowSetLocked(showSet) && <Lock className="h-3 w-3 text-amber-600" />}
-          {isShowSetUnlocked(showSet) && <Unlock className="h-3 w-3 text-emerald-600" />}
         </span>
         <span className="text-xs opacity-70 whitespace-nowrap">v{displayVersion}</span>
       </div>

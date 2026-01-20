@@ -205,6 +205,9 @@ export class ApiStack extends cdk.Stack {
     const version = showSetById.addResource('version');
     version.addMethod('PUT', showSetsIntegration, authOptions);
 
+    const lock = showSetById.addResource('lock');
+    lock.addMethod('POST', showSetsIntegration, authOptions);
+
     const unlock = showSetById.addResource('unlock');
     unlock.addMethod('POST', showSetsIntegration, authOptions);
 

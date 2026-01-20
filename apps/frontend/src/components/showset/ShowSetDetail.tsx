@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { X, ExternalLink, Pencil, Trash2, ChevronDown, ChevronRight, Circle, CheckCircle2, Pause, Eye, UserCheck, AlertTriangle, Send, Lock, Unlock } from 'lucide-react';
+import { X, ExternalLink, Pencil, Trash2, ChevronDown, ChevronRight, Circle, CheckCircle2, Pause, Eye, UserCheck, AlertTriangle, Send, Lock, LockOpen } from 'lucide-react';
 import type { ShowSet, StageName, StageStatus, StageUpdateInput, Note } from '@unisync/shared-types';
 import { showSetsApi, notesApi } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
@@ -42,16 +42,10 @@ import {
 } from '@/components/ui/tooltip';
 import { NoteList } from '@/components/notes/NoteList';
 import { EditShowSetDialog } from './EditShowSetDialog';
-import { UnlockShowSetDialog } from './UnlockShowSetDialog';
 
-// Helper to check if ShowSet is locked
+// Helper to check if ShowSet is locked (simple flag - admin controls)
 function isShowSetLocked(showSet: ShowSet): boolean {
-  return showSet.stages.drawing2d.status === 'complete' && !showSet.unlockedAt;
-}
-
-// Helper to check if ShowSet is unlocked for revision
-function isShowSetUnlocked(showSet: ShowSet): boolean {
-  return !!showSet.unlockedAt;
+  return !!showSet.lockedAt;
 }
 
 interface ShowSetDetailProps {
@@ -85,7 +79,6 @@ export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: Sho
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [unlockDialogOpen, setUnlockDialogOpen] = useState(false);
   const [linksExpanded, setLinksExpanded] = useState(false);
   const [stagesExpanded, setStagesExpanded] = useState(!notesOnly);
   const [notesExpanded, setNotesExpanded] = useState(true);
@@ -213,9 +206,24 @@ export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: Sho
 
   const canEdit = user?.role === 'admin' || user?.role === 'bim_coordinator';
   const canDelete = user?.role === 'admin';
-  const canUnlock = user?.role === 'admin' && isShowSetLocked(showSet);
+  const isAdmin = user?.role === 'admin';
   const isLocked = isShowSetLocked(showSet);
-  const isUnlocked = isShowSetUnlocked(showSet);
+
+  // Lock mutation
+  const lockMutation = useMutation({
+    mutationFn: () => showSetsApi.lock(showSet.showSetId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['showsets'] });
+    },
+  });
+
+  // Unlock mutation
+  const unlockMutation = useMutation({
+    mutationFn: () => showSetsApi.unlock(showSet.showSetId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['showsets'] });
+    },
+  });
 
   const lang = i18n.language as 'en' | 'zh' | 'zh-TW';
   const description = showSet.description[lang] || showSet.description.en;
@@ -245,25 +253,30 @@ export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: Sho
               </Tooltip>
             </TooltipProvider>
           )}
-          {isUnlocked && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger>
-                  <Unlock className="h-4 w-4 text-emerald-600" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{t('showset.unlocked')}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
         </div>
         <div className="flex items-center gap-2">
-          {canUnlock && (
-            <Button variant="outline" size="sm" onClick={() => setUnlockDialogOpen(true)}>
-              <Unlock className="h-4 w-4 mr-1" />
-              {t('showset.unlock')}
-            </Button>
+          {isAdmin && (
+            isLocked ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => unlockMutation.mutate()}
+                disabled={unlockMutation.isPending}
+              >
+                <LockOpen className="h-4 w-4 mr-1" />
+                {t('showset.unlock')}
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => lockMutation.mutate()}
+                disabled={lockMutation.isPending}
+              >
+                <Lock className="h-4 w-4 mr-1" />
+                {t('showset.lock')}
+              </Button>
+            )
           )}
           {canEdit && (
             <Button variant="ghost" size="icon" onClick={() => setEditDialogOpen(true)}>
@@ -544,12 +557,6 @@ export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: Sho
         </DialogContent>
       </Dialog>
 
-      {/* Unlock ShowSet Dialog */}
-      <UnlockShowSetDialog
-        showSet={showSet}
-        open={unlockDialogOpen}
-        onClose={() => setUnlockDialogOpen(false)}
-      />
     </>
   );
 }

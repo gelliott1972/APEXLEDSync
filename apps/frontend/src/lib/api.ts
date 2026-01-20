@@ -87,16 +87,20 @@ export const showSetsApi = {
       body: JSON.stringify(input),
     }),
 
-  updateVersion: (id: string, input: { versionType: 'screenVersion' | 'structureVersion' | 'integratedVersion' | 'bim360Version' | 'drawingVersion'; targetVersion: number; reason?: string; language: string }) =>
+  updateVersion: (id: string, input: { versionType: 'screenVersion' | 'revitVersion' | 'drawingVersion'; targetVersion: number; reason?: string; language: string }) =>
     request<void>(`/showsets/${id}/version`, {
       method: 'PUT',
       body: JSON.stringify(input),
     }),
 
-  unlock: (id: string, reason: string) =>
+  lock: (id: string) =>
+    request<void>(`/showsets/${id}/lock`, {
+      method: 'POST',
+    }),
+
+  unlock: (id: string) =>
     request<void>(`/showsets/${id}/unlock`, {
       method: 'POST',
-      body: JSON.stringify({ reason }),
     }),
 };
 

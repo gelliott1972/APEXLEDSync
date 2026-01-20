@@ -187,10 +187,6 @@ const linksUpdateSchema = z.object({
   drawingsUrl: z.string().url().nullable().optional(),
 });
 
-const unlockShowSetSchema = z.object({
-  reason: z.string().min(1, 'Unlock reason is required'),
-});
-
 // Initialize default stages
 function createDefaultStages(userId: string): ShowSetStages {
   const timestamp = now();
@@ -617,8 +613,9 @@ const updateStage: AuthenticatedHandler = async (event, auth) => {
       return forbidden('ShowSet is locked. An admin must unlock it before changes can be made.');
     }
 
-    // Track if we need to cascade reset (starting work on unlocked ShowSet)
-    const isStartingWorkOnUnlocked = currentShowSet.unlockedAt && status === 'in_progress';
+    // Cascade downstream stages when re-working a completed stage
+    // When going from complete → in_progress, downstream stages become revision_required
+    const shouldCascadeDownstream = currentStage.status === 'complete' && status === 'in_progress';
 
     // Auto-increment version when re-working a stage (complete or revision_required -> in_progress)
     // Version increments ONLY from revision_required/complete -> in_progress
@@ -717,15 +714,11 @@ const updateStage: AuthenticatedHandler = async (event, auth) => {
       expressionAttributeValues[':historyEntry'] = [versionHistoryEntry];
     }
 
-    // Handle cascade when starting work on an unlocked ShowSet
+    // Handle cascade when re-working a stage
     // Downstream stages that were complete become revision_required (not not_started)
     // This preserves version info and shows they need re-work
     const downstreamStagesToReset: StageName[] = [];
-    if (isStartingWorkOnUnlocked) {
-      // Clear unlock fields
-      updateExpression += ', unlockedAt = :nullValue, unlockedBy = :nullValue, unlockReason = :nullValue';
-      expressionAttributeValues[':nullValue'] = null;
-
+    if (shouldCascadeDownstream) {
       // Set downstream stages to revision_required (only if they were complete)
       const downstreamStages = getDownstreamStages(stageName);
       for (const ds of downstreamStages) {
@@ -1005,12 +998,72 @@ const updateVersion: AuthenticatedHandler = async (event, auth) => {
   }
 };
 
-// Helper to check if ShowSet is locked
+// Helper to check if ShowSet is locked (simple flag - admin controls)
 function isShowSetLocked(showSet: ShowSet): boolean {
-  return showSet.stages.drawing2d.status === 'complete' && !showSet.unlockedAt;
+  return !!showSet.lockedAt;
 }
 
-// Unlock a ShowSet for revision (Admin only)
+// Lock a ShowSet (Admin only)
+const lockShowSet: AuthenticatedHandler = async (event, auth) => {
+  try {
+    if (auth.role !== 'admin') {
+      return forbidden('Only admins can lock ShowSets');
+    }
+
+    const showSetId = event.pathParameters?.id;
+    if (!showSetId) {
+      return validationError('ShowSet ID is required');
+    }
+
+    // Get current ShowSet
+    const current = await docClient.send(
+      new GetCommand({
+        TableName: TABLE_NAMES.SHOWSETS,
+        Key: keys.showSet(showSetId),
+      })
+    );
+
+    if (!current.Item) {
+      return notFound('ShowSet');
+    }
+
+    const currentShowSet = current.Item as ShowSet;
+
+    // Check if already locked
+    if (isShowSetLocked(currentShowSet)) {
+      return validationError('ShowSet is already locked');
+    }
+
+    const timestamp = now();
+
+    // Update ShowSet with lock info
+    await docClient.send(
+      new UpdateCommand({
+        TableName: TABLE_NAMES.SHOWSETS,
+        Key: keys.showSet(showSetId),
+        UpdateExpression: 'SET lockedAt = :lockedAt, lockedBy = :lockedBy, #updatedAt = :updatedAt',
+        ExpressionAttributeNames: {
+          '#updatedAt': 'updatedAt',
+        },
+        ExpressionAttributeValues: {
+          ':lockedAt': timestamp,
+          ':lockedBy': auth.userId,
+          ':updatedAt': timestamp,
+        },
+      })
+    );
+
+    // Log lock activity
+    await logActivity(showSetId, auth.userId, auth.name, 'showset_locked', {});
+
+    return success({ message: 'ShowSet locked' });
+  } catch (err) {
+    console.error('Error locking showset:', err);
+    return internalError();
+  }
+};
+
+// Unlock a ShowSet (Admin only)
 const unlockShowSet: AuthenticatedHandler = async (event, auth) => {
   try {
     if (auth.role !== 'admin') {
@@ -1021,17 +1074,6 @@ const unlockShowSet: AuthenticatedHandler = async (event, auth) => {
     if (!showSetId) {
       return validationError('ShowSet ID is required');
     }
-
-    const body = JSON.parse(event.body ?? '{}');
-    const parsed = unlockShowSetSchema.safeParse(body);
-
-    if (!parsed.success) {
-      return validationError('Invalid request body', {
-        details: parsed.error.message,
-      });
-    }
-
-    const { reason } = parsed.data;
 
     // Get current ShowSet
     const current = await docClient.send(
@@ -1049,35 +1091,31 @@ const unlockShowSet: AuthenticatedHandler = async (event, auth) => {
 
     // Check if ShowSet is locked
     if (!isShowSetLocked(currentShowSet)) {
-      return validationError('ShowSet is not locked (drawing2d must be complete and not already unlocked)');
+      return validationError('ShowSet is not locked');
     }
 
     const timestamp = now();
 
-    // Update ShowSet with unlock info
+    // Clear lock fields
     await docClient.send(
       new UpdateCommand({
         TableName: TABLE_NAMES.SHOWSETS,
         Key: keys.showSet(showSetId),
-        UpdateExpression: 'SET unlockedAt = :unlockedAt, unlockedBy = :unlockedBy, unlockReason = :unlockReason, #updatedAt = :updatedAt',
+        UpdateExpression: 'SET lockedAt = :nullVal, lockedBy = :nullVal, #updatedAt = :updatedAt',
         ExpressionAttributeNames: {
           '#updatedAt': 'updatedAt',
         },
         ExpressionAttributeValues: {
-          ':unlockedAt': timestamp,
-          ':unlockedBy': auth.userId,
-          ':unlockReason': reason,
+          ':nullVal': null,
           ':updatedAt': timestamp,
         },
       })
     );
 
     // Log unlock activity
-    await logActivity(showSetId, auth.userId, auth.name, 'showset_unlocked', {
-      reason,
-    });
+    await logActivity(showSetId, auth.userId, auth.name, 'showset_unlocked', {});
 
-    return success({ message: 'ShowSet unlocked for revision' });
+    return success({ message: 'ShowSet unlocked' });
   } catch (err) {
     console.error('Error unlocking showset:', err);
     return internalError();
@@ -1110,6 +1148,8 @@ export const handler = async (
       return await wrappedHandler(updateLinks);
     case 'PUT /showsets/{id}/version':
       return await wrappedHandler(updateVersion);
+    case 'POST /showsets/{id}/lock':
+      return await wrappedHandler(lockShowSet);
     case 'POST /showsets/{id}/unlock':
       return await wrappedHandler(unlockShowSet);
     default:
