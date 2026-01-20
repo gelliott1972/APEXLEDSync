@@ -506,7 +506,7 @@ function InviteDialog({
   t: (key: string) => string;
 }) {
   const [copied, setCopied] = useState(false);
-  const appUrl = window.location.origin;
+  const appUrl = import.meta.env.VITE_APP_URL || window.location.origin;
 
   const inviteMessage = `Hi ${name},
 

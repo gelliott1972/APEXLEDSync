@@ -146,6 +146,7 @@ jobs:
         run: pnpm build
         env:
           VITE_API_URL: ${{ steps.env-config.outputs.api_url }}
+          VITE_APP_URL: https://apex.wrangleit.net
           VITE_USER_POOL_ID: ${{ steps.env-config.outputs.user_pool_id }}
           VITE_USER_POOL_CLIENT_ID: ${{ steps.env-config.outputs.user_pool_client_id }}
 
