@@ -3,7 +3,6 @@ import { Lock, Unlock } from 'lucide-react';
 import type { ShowSet, StageStatus, StageName } from '@unisync/shared-types';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { useUIStore } from '@/stores/ui-store';
 
 // Helper to check if ShowSet is locked
 function isShowSetLocked(showSet: ShowSet): boolean {
@@ -153,13 +152,12 @@ const cardColors: Record<StageStatus, string> = {
   on_hold: 'bg-red-500/30 border-red-500/50 hover:border-red-400',
 };
 
-// Get the highest relevant version for display
+// Get the highest relevant version for display (3 deliverables)
 function getDisplayVersion(showSet: ShowSet): number {
+  const revitVersion = showSet.revitVersion ?? Math.max(showSet.structureVersion ?? 1, showSet.integratedVersion ?? 1);
   return Math.max(
     showSet.screenVersion ?? 1,
-    showSet.structureVersion ?? showSet.revitVersion ?? 1,
-    showSet.integratedVersion ?? showSet.revitVersion ?? 1,
-    showSet.bim360Version ?? showSet.revitVersion ?? 1,
+    revitVersion,
     showSet.drawingVersion ?? 1
   );
 }
@@ -174,7 +172,6 @@ function KanbanCard({
   onClick: () => void;
 }) {
   const { t, i18n } = useTranslation();
-  const { showVersionNumbers } = useUIStore();
   const lang = i18n.language as 'en' | 'zh' | 'zh-TW';
   const description = showSet.description[lang] || showSet.description.en;
   const displayVersion = getDisplayVersion(showSet);
@@ -190,14 +187,15 @@ function KanbanCard({
       )}
       onClick={onClick}
     >
-      <div className="text-sm font-medium kanban-text text-center whitespace-nowrap flex items-center justify-center gap-1">
-        {compactId}
-        {isShowSetLocked(showSet) && <Lock className="h-3 w-3 text-amber-600" />}
-        {isShowSetUnlocked(showSet) && <Unlock className="h-3 w-3 text-emerald-600" />}
+      {/* ID and version on same line when space allows, wraps on narrow */}
+      <div className="text-sm font-medium kanban-text flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0">
+        <span className="flex items-center gap-1 whitespace-nowrap">
+          {compactId}
+          {isShowSetLocked(showSet) && <Lock className="h-3 w-3 text-amber-600" />}
+          {isShowSetUnlocked(showSet) && <Unlock className="h-3 w-3 text-emerald-600" />}
+        </span>
+        <span className="text-xs opacity-70 whitespace-nowrap">v{displayVersion}</span>
       </div>
-      {showVersionNumbers && (
-        <div className="text-xs opacity-70 kanban-text text-right">v{displayVersion}</div>
-      )}
 
       {/* Hover tooltip with version details */}
       <div className="absolute left-full top-0 ml-1 z-50 hidden group-hover:block w-48 p-2 bg-popover border rounded-lg shadow-lg overflow-hidden">
@@ -211,16 +209,8 @@ function KanbanCard({
               <span className="font-medium">v{showSet.screenVersion ?? 1}</span>
             </div>
             <div className="flex justify-between">
-              <span>{t('stages.structure')}:</span>
-              <span className="font-medium">v{showSet.structureVersion ?? showSet.revitVersion ?? 1}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>{t('stages.integrated')}:</span>
-              <span className="font-medium">v{showSet.integratedVersion ?? showSet.revitVersion ?? 1}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>{t('stages.inBim360')}:</span>
-              <span className="font-medium">v{showSet.bim360Version ?? showSet.revitVersion ?? 1}</span>
+              <span>Revit:</span>
+              <span className="font-medium">v{showSet.revitVersion ?? Math.max(showSet.structureVersion ?? 1, showSet.integratedVersion ?? 1)}</span>
             </div>
             <div className="flex justify-between">
               <span>{t('stages.drawing2d')}:</span>

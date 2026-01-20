@@ -12,8 +12,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { ShowSetTable } from '@/components/showset/ShowSetTable';
 import { KanbanBoard } from '@/components/showset/KanbanBoard';
 import { ShowSetDetail } from '@/components/showset/ShowSetDetail';
@@ -21,7 +19,7 @@ import type { Area } from '@unisync/shared-types';
 
 export function DashboardPage() {
   const { t } = useTranslation();
-  const { viewMode, setViewMode, showVersionNumbers, setShowVersionNumbers, filters, setFilter, resetFilters, selectedShowSetId, setSelectedShowSetId } =
+  const { viewMode, setViewMode, filters, setFilter, resetFilters, selectedShowSetId, setSelectedShowSetId } =
     useUIStore();
   const [notesOnly, setNotesOnly] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -147,18 +145,6 @@ export function DashboardPage() {
         >
           <Search className="h-4 w-4" />
         </Button>
-
-        {/* Version Toggle */}
-        <div className="flex items-center gap-1.5">
-          <Switch
-            id="version-toggle"
-            checked={showVersionNumbers}
-            onCheckedChange={setShowVersionNumbers}
-          />
-          <Label htmlFor="version-toggle" className="text-sm cursor-pointer">
-            {t('views.showVersions')}
-          </Label>
-        </div>
 
         {/* View Toggle */}
         <div className="flex rounded-md border">
