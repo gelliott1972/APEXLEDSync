@@ -63,15 +63,15 @@ export interface ShowSetLinks {
   drawingsUrl: string | null;
 }
 
-// Version types - one per stage
-export type VersionType = 'screenVersion' | 'structureVersion' | 'integratedVersion' | 'bim360Version' | 'drawingVersion';
+// Version types - 3 deliverables (inBim360 has no version - just a publish step)
+export type VersionType = 'screenVersion' | 'revitVersion' | 'drawingVersion';
 
-// Map stage names to version types
-export const STAGE_VERSION_MAP: Record<StageName, VersionType> = {
+// Map stage names to version types (inBim360 has no version)
+export const STAGE_VERSION_MAP: Record<StageName, VersionType | null> = {
   screen: 'screenVersion',
-  structure: 'structureVersion',
-  integrated: 'integratedVersion',
-  inBim360: 'bim360Version',
+  structure: 'revitVersion',     // Structure and Integrated share revitVersion
+  integrated: 'revitVersion',    // Structure and Integrated share revitVersion
+  inBim360: null,                // No version - just uploads to BIM360 cloud
   drawing2d: 'drawingVersion',
 };
 
@@ -92,14 +92,14 @@ export interface ShowSet {
   vmList: VMItem[];
   stages: ShowSetStages;
   links: ShowSetLinks;
-  // Version tracking - per stage
-  screenVersion: number;
-  structureVersion: number;
-  integratedVersion: number;
-  bim360Version: number;
-  drawingVersion: number;
-  // Legacy field for backward compatibility (will be removed)
-  revitVersion?: number;
+  // Version tracking - 3 deliverables
+  screenVersion: number;      // Screen model version
+  revitVersion: number;       // Revit model version (shared by structure + integrated stages)
+  drawingVersion: number;     // 2D drawings version
+  // Legacy fields for backward compatibility (migration in progress)
+  structureVersion?: number;
+  integratedVersion?: number;
+  bim360Version?: number;
   versionHistory: VersionHistoryEntry[];
   // Locking - ShowSet locks when drawing2d.status === 'complete'
   unlockedAt?: string;
@@ -131,7 +131,6 @@ export interface StageUpdateInput {
   version?: string;
   revisionNote?: string;
   revisionNoteLang?: 'en' | 'zh' | 'zh-TW';
-  skipVersionIncrement?: boolean; // Skip auto-increment when going revision_required -> in_progress
 }
 
 export interface LinksUpdateInput {

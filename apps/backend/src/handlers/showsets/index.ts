@@ -142,28 +142,26 @@ const stageUpdateSchema = z.object({
   version: z.string().optional(),
   revisionNote: z.string().optional(), // Required when setting revision_required
   revisionNoteLang: z.enum(['en', 'zh', 'zh-TW']).optional(),
-  skipVersionIncrement: z.boolean().optional(), // Skip auto-increment when going revision_required -> in_progress
 });
 
-// Schema for manual version update - per-stage versions
+// Schema for manual version update - 3 deliverables
 const versionUpdateSchema = z.object({
-  versionType: z.enum(['screenVersion', 'structureVersion', 'integratedVersion', 'bim360Version', 'drawingVersion']),
+  versionType: z.enum(['screenVersion', 'revitVersion', 'drawingVersion']),
   reason: z.string().optional().default(''),
   language: z.enum(['en', 'zh', 'zh-TW']),
   targetVersion: z.number().int().positive().optional(), // If provided, set to this version directly
 });
 
-// Map stage to version type - per-stage versions
+// Map stage to version type - 3 deliverables (structure + integrated share revitVersion)
 function getVersionTypeForStage(stage: StageName): VersionType | null {
   switch (stage) {
     case 'screen':
       return 'screenVersion';
     case 'structure':
-      return 'structureVersion';
     case 'integrated':
-      return 'integratedVersion';
+      return 'revitVersion';  // Both share the same Revit model version
     case 'inBim360':
-      return 'bim360Version';
+      return null;            // No version - just uploads to BIM360 cloud
     case 'drawing2d':
       return 'drawingVersion';
     default:
@@ -350,11 +348,9 @@ const createShowSet: AuthenticatedHandler = async (event, auth) => {
         modelUrl: null,
         drawingsUrl: null,
       },
-      // Version tracking - per-stage, initialize to v1
+      // Version tracking - 3 deliverables, initialize to v1
       screenVersion: 1,
-      structureVersion: 1,
-      integratedVersion: 1,
-      bim360Version: 1,
+      revitVersion: 1,       // Shared by structure + integrated stages
       drawingVersion: 1,
       versionHistory: [],
       createdAt: timestamp,
@@ -583,7 +579,7 @@ const updateStage: AuthenticatedHandler = async (event, auth) => {
       });
     }
 
-    const { status, assignedTo, version, revisionNote, revisionNoteLang, skipVersionIncrement } = parsed.data;
+    const { status, assignedTo, version, revisionNote, revisionNoteLang } = parsed.data;
 
     // Engineers can only approve (complete) or request revision
     if (isEngineer(auth.role) && !ENGINEER_ALLOWED_STATUSES.includes(status)) {
@@ -624,18 +620,31 @@ const updateStage: AuthenticatedHandler = async (event, auth) => {
     // Track if we need to cascade reset (starting work on unlocked ShowSet)
     const isStartingWorkOnUnlocked = currentShowSet.unlockedAt && status === 'in_progress';
 
-    // Check if this is a revision_required -> in_progress transition (version bump)
-    // Only auto-increment if skipVersionIncrement is not true
-    const isRevisionToInProgress = currentStage.status === 'revision_required' && status === 'in_progress';
+    // Auto-increment version when re-working a stage (complete or revision_required -> in_progress)
+    // Version increments ONLY from revision_required/complete -> in_progress
     const versionType = getVersionTypeForStage(stageName);
     let newVersion: number | undefined;
     let versionHistoryEntry: VersionHistoryEntry | undefined;
 
-    if (isRevisionToInProgress && versionType && !skipVersionIncrement) {
-      // Auto-increment the version
-      newVersion = (currentShowSet[versionType] ?? 1) + 1;
+    const shouldIncrementVersion =
+      (currentStage.status === 'complete' || currentStage.status === 'revision_required') &&
+      status === 'in_progress' &&
+      versionType !== null;  // Skip inBim360 (has no version)
 
-      // Create version history entry (will be populated with translated reason later)
+    if (shouldIncrementVersion && versionType) {
+      // Get current version with fallback for legacy data
+      let currentVersionValue: number;
+      if (versionType === 'revitVersion') {
+        // Fallback chain: revitVersion -> max(structureVersion, integratedVersion) -> 1
+        currentVersionValue = currentShowSet.revitVersion
+          ?? Math.max(currentShowSet.structureVersion ?? 1, currentShowSet.integratedVersion ?? 1);
+      } else {
+        currentVersionValue = currentShowSet[versionType] ?? 1;
+      }
+      // Auto-increment the version
+      newVersion = currentVersionValue + 1;
+
+      // Create version history entry
       versionHistoryEntry = {
         id: generateId(),
         versionType,
@@ -708,36 +717,36 @@ const updateStage: AuthenticatedHandler = async (event, auth) => {
       expressionAttributeValues[':historyEntry'] = [versionHistoryEntry];
     }
 
-    // Handle cascade reset when starting work on an unlocked ShowSet
+    // Handle cascade when starting work on an unlocked ShowSet
+    // Downstream stages that were complete become revision_required (not not_started)
+    // This preserves version info and shows they need re-work
     const downstreamStagesToReset: StageName[] = [];
     if (isStartingWorkOnUnlocked) {
       // Clear unlock fields
       updateExpression += ', unlockedAt = :nullValue, unlockedBy = :nullValue, unlockReason = :nullValue';
       expressionAttributeValues[':nullValue'] = null;
 
-      // Reset downstream stages and increment their versions
+      // Set downstream stages to revision_required (only if they were complete)
       const downstreamStages = getDownstreamStages(stageName);
       for (const ds of downstreamStages) {
-        const dsVersionType = getVersionTypeForStage(ds);
-        const resetStage = {
-          status: 'not_started',
-          updatedBy: auth.userId,
-          updatedAt: timestamp,
-        };
+        const currentDsStatus = currentShowSet.stages[ds].status;
 
-        updateExpression += `, stages.#ds_${ds} = :dsReset_${ds}`;
-        expressionAttributeNames[`#ds_${ds}`] = ds;
-        expressionAttributeValues[`:dsReset_${ds}`] = resetStage;
+        // Only change if was complete - preserve not_started
+        if (currentDsStatus === 'complete') {
+          const resetStage = {
+            ...currentShowSet.stages[ds],
+            status: 'revision_required',
+            updatedBy: auth.userId,
+            updatedAt: timestamp,
+          };
 
-        // Increment version for downstream stage
-        if (dsVersionType) {
-          const currentDsVersion = currentShowSet[dsVersionType] ?? 1;
-          updateExpression += `, #dsVer_${ds} = :dsNewVer_${ds}`;
-          expressionAttributeNames[`#dsVer_${ds}`] = dsVersionType;
-          expressionAttributeValues[`:dsNewVer_${ds}`] = currentDsVersion + 1;
+          updateExpression += `, stages.#ds_${ds} = :dsReset_${ds}`;
+          expressionAttributeNames[`#ds_${ds}`] = ds;
+          expressionAttributeValues[`:dsReset_${ds}`] = resetStage;
+
+          // DO NOT increment versions on cascade - version increments when stage is re-worked
+          downstreamStagesToReset.push(ds);
         }
-
-        downstreamStagesToReset.push(ds);
       }
     }
 
@@ -778,11 +787,19 @@ const updateStage: AuthenticatedHandler = async (event, auth) => {
 
     // Log version bump activity
     if (newVersion !== undefined && versionType) {
+      // Get the previous version for logging (same fallback logic)
+      let prevVersion: number;
+      if (versionType === 'revitVersion') {
+        prevVersion = currentShowSet.revitVersion
+          ?? Math.max(currentShowSet.structureVersion ?? 1, currentShowSet.integratedVersion ?? 1);
+      } else {
+        prevVersion = currentShowSet[versionType] ?? 1;
+      }
       await logActivity(showSetId, auth.userId, auth.name, 'version_bump', {
         versionType,
-        from: currentShowSet[versionType] ?? 1,
+        from: prevVersion,
         to: newVersion,
-        trigger: 'revision_required',
+        trigger: currentStage.status, // 'revision_required' or 'complete'
         historyEntryId: versionHistoryEntry?.id,
       });
     }
@@ -916,7 +933,15 @@ const updateVersion: AuthenticatedHandler = async (event, auth) => {
     }
 
     const currentShowSet = current.Item as ShowSet;
-    const currentVersion = currentShowSet[versionType] ?? 1;
+    // Get current version with fallback for legacy data
+    let currentVersion: number;
+    if (versionType === 'revitVersion') {
+      // Fallback chain: revitVersion -> max(structureVersion, integratedVersion) -> 1
+      currentVersion = currentShowSet.revitVersion
+        ?? Math.max(currentShowSet.structureVersion ?? 1, currentShowSet.integratedVersion ?? 1);
+    } else {
+      currentVersion = currentShowSet[versionType] ?? 1;
+    }
     // Use targetVersion if provided, otherwise increment
     const newVersion = targetVersion ?? currentVersion + 1;
     const timestamp = now();

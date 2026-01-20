@@ -1,10 +1,8 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Square, Play, MessageSquare, Pause, UserCheck, AlertTriangle, Lock, Unlock } from 'lucide-react';
-import type { ShowSet, StageName } from '@unisync/shared-types';
+import { Square, Play, MessageSquare, Lock, Unlock, Minus, Loader2, Check, AlertTriangle } from 'lucide-react';
+import type { ShowSet, StageName, StageStatus } from '@unisync/shared-types';
 import { useSessionStore } from '@/stores/session-store';
-import { useUIStore } from '@/stores/ui-store';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { StartWorkDialog } from './StartWorkDialog';
 import { FinishWorkDialog } from './FinishWorkDialog';
@@ -33,28 +31,63 @@ function isShowSetUnlocked(showSet: ShowSet): boolean {
   return !!showSet.unlockedAt;
 }
 
-// Get the relevant version for a stage - each stage has its own version
-function getVersionForStage(showSet: ShowSet, stage: StageName): number {
+// Get the relevant version for a stage - 3 deliverables (inBim360 has no version)
+function getVersionForStage(showSet: ShowSet, stage: StageName): number | null {
   switch (stage) {
     case 'screen':
       return showSet.screenVersion ?? 1;
     case 'structure':
-      return showSet.structureVersion ?? showSet.revitVersion ?? 1; // Fallback for legacy data
     case 'integrated':
-      return showSet.integratedVersion ?? showSet.revitVersion ?? 1; // Fallback for legacy data
+      // Both share revitVersion with fallback for legacy data
+      return showSet.revitVersion ?? Math.max(showSet.structureVersion ?? 1, showSet.integratedVersion ?? 1);
     case 'inBim360':
-      return showSet.bim360Version ?? showSet.revitVersion ?? 1; // Fallback for legacy data
+      return null; // No version - just uploads to BIM360 cloud
     case 'drawing2d':
       return showSet.drawingVersion ?? 1;
     default:
-      return 1;
+      return null;
   }
+}
+
+// Stage tile component with icon + version
+function StageCell({ status, version, isBeingWorked }: {
+  status: StageStatus;
+  version: number | null;
+  isBeingWorked: boolean;
+}) {
+  const getIcon = () => {
+    switch (status) {
+      case 'not_started':
+        return <Minus className="h-4 w-4" />;
+      case 'in_progress':
+        return <Loader2 className="h-4 w-4 animate-spin" />;
+      case 'complete':
+        return <Check className="h-4 w-4" />;
+      case 'revision_required':
+        return <AlertTriangle className="h-4 w-4" />;
+      default:
+        return <Minus className="h-4 w-4" />;
+    }
+  };
+
+  // Show version for stages that have versions (not inBim360) and not not_started
+  const showVersion = version !== null && status !== 'not_started';
+
+  // Get status-based class
+  const statusClass = `stage-tile stage-tile--${status}`;
+  const beingWorkedClass = isBeingWorked ? 'ring-2 ring-primary ring-offset-1' : '';
+
+  return (
+    <div className={`${statusClass} ${beingWorkedClass}`} title={showVersion ? `v${version}` : undefined}>
+      {getIcon()}
+      {showVersion && <span className="stage-version">v{version}</span>}
+    </div>
+  );
 }
 
 export function ShowSetTable({ showSets, onSelect, onSelectNotes }: ShowSetTableProps) {
   const { t, i18n } = useTranslation();
   const { isWorking, currentShowSetId, workingStages } = useSessionStore();
-  const { showVersionNumbers } = useUIStore();
   const [startDialogShowSet, setStartDialogShowSet] = useState<ShowSet | null>(null);
   const [finishDialogShowSet, setFinishDialogShowSet] = useState<ShowSet | null>(null);
 
@@ -189,57 +222,23 @@ export function ShowSetTable({ showSets, onSelect, onSelectNotes }: ShowSetTable
                 const version = getVersionForStage(showSet, stage);
                 const beingWorked = isStageBeingWorked(showSet.showSetId, stage);
 
-                // Determine badge content based on showVersionNumbers toggle
-                const getBadgeContent = () => {
-                  if (status === 'not_started') return '—';
-
-                  if (showVersionNumbers) {
-                    // Show version numbers
-                    return `v${version}`;
-                  } else {
-                    // Show status icons
-                    switch (status) {
-                      case 'in_progress': return 'WIP';
-                      case 'complete': return '✓';
-                      case 'on_hold': return <Pause className="h-4 w-4" />;
-                      case 'client_review': return <UserCheck className="h-4 w-4" />;
-                      case 'engineer_review': return <UserCheck className="h-4 w-4" />;
-                      case 'revision_required': return <AlertTriangle className="h-4 w-4" />;
-                      default: return '—';
-                    }
-                  }
-                };
-
                 return (
                   <td key={stage} className="px-2 py-3 text-center">
-                    <Badge
-                      variant={status as any}
-                      className={`text-xs w-full justify-center py-1.5 ${beingWorked ? 'ring-2 ring-primary ring-offset-1 animate-pulse' : ''}`}
-                      title={`v${version}`}
-                    >
-                      {getBadgeContent()}
-                    </Badge>
+                    <StageCell
+                      status={status}
+                      version={version}
+                      isBeingWorked={beingWorked}
+                    />
                   </td>
                 );
               })}
               {/* Completed column */}
               <td className="px-2 py-3 text-center">
-                {showSet.stages.drawing2d.status === 'complete' ? (
-                  <Badge
-                    variant="complete"
-                    className="text-xs w-full justify-center py-1.5"
-                    title={`v${showSet.drawingVersion ?? 1}`}
-                  >
-                    {showVersionNumbers ? `v${showSet.drawingVersion ?? 1}` : '✓'}
-                  </Badge>
-                ) : (
-                  <Badge
-                    variant="not_started"
-                    className="text-xs w-full justify-center py-1.5"
-                  >
-                    —
-                  </Badge>
-                )}
+                <StageCell
+                  status={showSet.stages.drawing2d.status === 'complete' ? 'complete' : 'not_started'}
+                  version={showSet.stages.drawing2d.status === 'complete' ? (showSet.drawingVersion ?? 1) : null}
+                  isBeingWorked={false}
+                />
               </td>
             </tr>
           ))}

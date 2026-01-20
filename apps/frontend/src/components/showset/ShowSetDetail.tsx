@@ -292,12 +292,10 @@ export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: Sho
             <span className="text-sm">{showSet.scene}</span>
             <span className="text-sm text-muted-foreground">{description}</span>
           </div>
-          {/* Version display */}
+          {/* Version display - 3 deliverables */}
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground pt-1">
             <span>{t('stages.short.screen')}: <span className="font-medium text-foreground">v{showSet.screenVersion ?? 1}</span></span>
-            <span>{t('stages.short.structure')}: <span className="font-medium text-foreground">v{showSet.structureVersion ?? showSet.revitVersion ?? 1}</span></span>
-            <span>{t('stages.short.integrated')}: <span className="font-medium text-foreground">v{showSet.integratedVersion ?? showSet.revitVersion ?? 1}</span></span>
-            <span>{t('stages.short.inBim360')}: <span className="font-medium text-foreground">v{showSet.bim360Version ?? showSet.revitVersion ?? 1}</span></span>
+            <span>Revit: <span className="font-medium text-foreground">v{showSet.revitVersion ?? Math.max(showSet.structureVersion ?? 1, showSet.integratedVersion ?? 1)}</span></span>
             <span>{t('stages.short.drawing2d')}: <span className="font-medium text-foreground">v{showSet.drawingVersion ?? 1}</span></span>
           </div>
         </div>
