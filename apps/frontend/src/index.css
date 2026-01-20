@@ -189,7 +189,12 @@
   color: #dc2626;
   background: #fee2e2;
 }
-.stage-tile--client_review,
+/* Client Review - BLUE */
+.stage-tile--client_review {
+  color: #2563eb;
+  background: #dbeafe;
+}
+/* Engineer Review - PURPLE */
 .stage-tile--engineer_review {
   color: #7c3aed;
   background: #ede9fe;
@@ -216,7 +221,12 @@
   color: #f87171;
   background: #450a0a;
 }
-.dark .stage-tile--client_review,
+/* Dark mode - Client Review - BLUE */
+.dark .stage-tile--client_review {
+  color: #60a5fa;
+  background: #1e3a5f;
+}
+/* Dark mode - Engineer Review - PURPLE */
 .dark .stage-tile--engineer_review {
   color: #a78bfa;
   background: #4c1d95;

@@ -247,6 +247,9 @@ export class ApiStack extends cdk.Stack {
     const sessions = this.api.root.addResource('sessions');
     sessions.addMethod('GET', sessionsIntegration, authOptions);
 
+    const sessionMyActive = sessions.addResource('my-active');
+    sessionMyActive.addMethod('GET', sessionsIntegration, authOptions);
+
     const sessionStart = sessions.addResource('start');
     sessionStart.addMethod('POST', sessionsIntegration, authOptions);
 

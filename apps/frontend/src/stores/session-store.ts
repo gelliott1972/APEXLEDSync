@@ -12,6 +12,8 @@ interface SessionState {
   startSession: (showSetId?: string, stages?: StageName[], activity?: string) => Promise<void>;
   endSession: () => Promise<StageName[]>;
   updateActivity: (showSetId?: string, activity?: string) => void;
+  restoreSession: () => Promise<void>;
+  startHeartbeat: () => void;
 }
 
 export const useSessionStore = create<SessionState>((set, get) => ({
@@ -21,33 +23,63 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   activity: '',
   heartbeatInterval: null,
 
+  startHeartbeat: () => {
+    const { heartbeatInterval } = get();
+    // Clear any existing interval
+    if (heartbeatInterval) {
+      clearInterval(heartbeatInterval);
+    }
+
+    const interval = setInterval(async () => {
+      const state = get();
+      if (state.isWorking) {
+        try {
+          await sessionsApi.heartbeat(
+            state.currentShowSetId ?? undefined,
+            state.activity,
+            state.workingStages
+          );
+        } catch (err) {
+          console.error('Heartbeat failed:', err);
+        }
+      }
+    }, HEARTBEAT_INTERVAL_MS);
+
+    set({ heartbeatInterval: interval });
+  },
+
+  restoreSession: async () => {
+    try {
+      const sessions = await sessionsApi.myActive();
+      if (sessions.length > 0) {
+        const active = sessions[0];
+        set({
+          isWorking: true,
+          currentShowSetId: active.showSetId ?? null,
+          workingStages: active.workingStages || [],
+          activity: active.activity || '',
+        });
+        // Start heartbeat for restored session
+        get().startHeartbeat();
+      }
+    } catch (err) {
+      console.error('Failed to restore session:', err);
+    }
+  },
+
   startSession: async (showSetId?: string, stages: StageName[] = [], activity = 'Working') => {
     try {
       await sessionsApi.start({ showSetId, workingStages: stages, activity });
-
-      // Start heartbeat interval
-      const interval = setInterval(async () => {
-        const state = get();
-        if (state.isWorking) {
-          try {
-            await sessionsApi.heartbeat(
-              state.currentShowSetId ?? undefined,
-              state.activity,
-              state.workingStages
-            );
-          } catch (err) {
-            console.error('Heartbeat failed:', err);
-          }
-        }
-      }, HEARTBEAT_INTERVAL_MS);
 
       set({
         isWorking: true,
         currentShowSetId: showSetId ?? null,
         workingStages: stages,
         activity,
-        heartbeatInterval: interval,
       });
+
+      // Start heartbeat
+      get().startHeartbeat();
     } catch (err) {
       console.error('Failed to start session:', err);
       throw err;

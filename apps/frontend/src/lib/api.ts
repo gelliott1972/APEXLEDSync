@@ -98,9 +98,10 @@ export const showSetsApi = {
       method: 'POST',
     }),
 
-  unlock: (id: string) =>
+  unlock: (id: string, stagesToReset?: string[]) =>
     request<void>(`/showsets/${id}/unlock`, {
       method: 'POST',
+      body: JSON.stringify({ stagesToReset }),
     }),
 };
 
@@ -206,6 +207,8 @@ export const notesApi = {
 // Sessions API
 export const sessionsApi = {
   list: () => request<Session[]>('/sessions'),
+
+  myActive: () => request<Session[]>('/sessions/my-active'),
 
   start: (input: SessionStartInput) =>
     request<Session>('/sessions/start', {

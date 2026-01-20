@@ -155,6 +155,32 @@ const endSession: AuthenticatedHandler = async (_event, auth) => {
   }
 };
 
+const myActiveSessions: AuthenticatedHandler = async (_event, auth) => {
+  try {
+    const result = await docClient.send(
+      new ScanCommand({
+        TableName: TABLE_NAMES.SESSIONS,
+        FilterExpression: 'PK = :pk AND userId = :userId',
+        ExpressionAttributeValues: {
+          ':pk': 'ACTIVE_SESSION',
+          ':userId': auth.userId,
+        },
+      })
+    );
+
+    // Filter out expired sessions (DynamoDB TTL is eventually consistent)
+    const currentTime = Math.floor(Date.now() / 1000);
+    const activeSessions = (result.Items ?? []).filter(
+      (item) => (item as Session).expiresAt > currentTime
+    ) as Session[];
+
+    return success(activeSessions);
+  } catch (err) {
+    console.error('Error getting my active sessions:', err);
+    return internalError();
+  }
+};
+
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
@@ -167,6 +193,8 @@ export const handler = async (
   switch (`${method} ${resource}`) {
     case 'GET /sessions':
       return await wrappedHandler(listSessions);
+    case 'GET /sessions/my-active':
+      return await wrappedHandler(myActiveSessions);
     case 'POST /sessions/start':
       return await wrappedHandler(startSession);
     case 'POST /sessions/heartbeat':

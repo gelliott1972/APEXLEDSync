@@ -1,5 +1,7 @@
+import { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './stores/auth-store';
+import { useSessionStore } from './stores/session-store';
 import { Layout } from './components/layout/Layout';
 import { LoginPage } from './pages/Login';
 import { DashboardPage } from './pages/Dashboard';
@@ -36,6 +38,16 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  const { isAuthenticated } = useAuthStore();
+  const { restoreSession } = useSessionStore();
+
+  // Restore session from backend on app mount (if authenticated)
+  useEffect(() => {
+    if (isAuthenticated) {
+      restoreSession();
+    }
+  }, [isAuthenticated, restoreSession]);
+
   return (
     <>
       <Routes>

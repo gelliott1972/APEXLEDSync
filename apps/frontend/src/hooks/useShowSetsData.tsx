@@ -124,7 +124,7 @@ export function useShowSetsREST(area?: string): ShowSetsDataResult {
   const { data, isLoading, error, refetch } = useTanstackQuery({
     queryKey: ['showsets', area],
     queryFn: () => showSetsApi.list(area),
-    refetchInterval: 60000, // Poll every 60 seconds
+    refetchInterval: 15000, // Poll every 15 seconds
   });
 
   return {

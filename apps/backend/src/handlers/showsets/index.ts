@@ -1063,6 +1063,11 @@ const lockShowSet: AuthenticatedHandler = async (event, auth) => {
   }
 };
 
+// Schema for unlock request body
+const unlockShowSetSchema = z.object({
+  stagesToReset: z.array(z.enum(['screen', 'structure', 'integrated', 'inBim360', 'drawing2d'])).optional(),
+});
+
 // Unlock a ShowSet (Admin only)
 const unlockShowSet: AuthenticatedHandler = async (event, auth) => {
   try {
@@ -1074,6 +1079,18 @@ const unlockShowSet: AuthenticatedHandler = async (event, auth) => {
     if (!showSetId) {
       return validationError('ShowSet ID is required');
     }
+
+    // Parse request body for stagesToReset
+    const body = JSON.parse(event.body ?? '{}');
+    const parsed = unlockShowSetSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return validationError('Invalid request body', {
+        details: parsed.error.message,
+      });
+    }
+
+    const { stagesToReset } = parsed.data;
 
     // Get current ShowSet
     const current = await docClient.send(
@@ -1096,26 +1113,53 @@ const unlockShowSet: AuthenticatedHandler = async (event, auth) => {
 
     const timestamp = now();
 
-    // Clear lock fields
+    // Build update expression - start with clearing lock fields
+    let updateExpression = 'SET lockedAt = :nullVal, lockedBy = :nullVal, #updatedAt = :updatedAt';
+    const expressionAttributeNames: Record<string, string> = {
+      '#updatedAt': 'updatedAt',
+    };
+    const expressionAttributeValues: Record<string, unknown> = {
+      ':nullVal': null,
+      ':updatedAt': timestamp,
+    };
+
+    // If stagesToReset is provided, set those stages to revision_required
+    const stagesActuallyReset: StageName[] = [];
+    if (stagesToReset && stagesToReset.length > 0) {
+      for (const stageName of stagesToReset) {
+        // Only reset stages that are currently complete
+        if (currentShowSet.stages[stageName]?.status === 'complete') {
+          const stageKey = `stages_${stageName}`;
+          updateExpression += `, stages.#${stageKey} = :${stageKey}`;
+          expressionAttributeNames[`#${stageKey}`] = stageName;
+          expressionAttributeValues[`:${stageKey}`] = {
+            ...currentShowSet.stages[stageName],
+            status: 'revision_required',
+            updatedAt: timestamp,
+            updatedBy: auth.userId,
+          };
+          stagesActuallyReset.push(stageName);
+        }
+      }
+    }
+
+    // Execute update
     await docClient.send(
       new UpdateCommand({
         TableName: TABLE_NAMES.SHOWSETS,
         Key: keys.showSet(showSetId),
-        UpdateExpression: 'SET lockedAt = :nullVal, lockedBy = :nullVal, #updatedAt = :updatedAt',
-        ExpressionAttributeNames: {
-          '#updatedAt': 'updatedAt',
-        },
-        ExpressionAttributeValues: {
-          ':nullVal': null,
-          ':updatedAt': timestamp,
-        },
+        UpdateExpression: updateExpression,
+        ExpressionAttributeNames: expressionAttributeNames,
+        ExpressionAttributeValues: expressionAttributeValues,
       })
     );
 
-    // Log unlock activity
-    await logActivity(showSetId, auth.userId, auth.name, 'showset_unlocked', {});
+    // Log unlock activity with stages reset info
+    await logActivity(showSetId, auth.userId, auth.name, 'showset_unlocked', {
+      stagesReset: stagesActuallyReset,
+    });
 
-    return success({ message: 'ShowSet unlocked' });
+    return success({ message: 'ShowSet unlocked', stagesReset: stagesActuallyReset });
   } catch (err) {
     console.error('Error unlocking showset:', err);
     return internalError();

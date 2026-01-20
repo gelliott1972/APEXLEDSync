@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { X, ExternalLink, Pencil, Trash2, ChevronDown, ChevronRight, Circle, CheckCircle2, Pause, Eye, UserCheck, AlertTriangle, Send, Lock, LockOpen } from 'lucide-react';
@@ -9,6 +9,8 @@ import { STAGE_PERMISSIONS, ENGINEER_ALLOWED_STATUSES } from '@unisync/shared-ty
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -72,6 +74,85 @@ const STAGE_STATUSES: Record<StageName, StageStatus[]> = {
   drawing2d: ['not_started', 'in_progress', 'engineer_review', 'client_review', 'revision_required', 'complete', 'on_hold'],
 };
 
+// Stage order for unlock dialog
+const STAGE_ORDER: StageName[] = ['screen', 'structure', 'integrated', 'inBim360', 'drawing2d'];
+
+// Unlock Dialog component
+interface UnlockDialogProps {
+  showSet: ShowSet;
+  open: boolean;
+  onClose: () => void;
+  onConfirm: (stagesToReset: StageName[]) => void;
+  isLoading: boolean;
+}
+
+function UnlockDialog({ showSet, open, onClose, onConfirm, isLoading }: UnlockDialogProps) {
+  const { t } = useTranslation();
+  const [selectedStages, setSelectedStages] = useState<StageName[]>(() =>
+    STAGE_ORDER.filter(stage => showSet.stages[stage].status === 'complete')
+  );
+
+  const toggleStage = (stage: StageName) => {
+    setSelectedStages(prev =>
+      prev.includes(stage)
+        ? prev.filter(s => s !== stage)
+        : [...prev, stage]
+    );
+  };
+
+  const handleConfirm = () => {
+    onConfirm(selectedStages);
+  };
+
+  // Reset selected stages when dialog opens
+  useEffect(() => {
+    if (open) {
+      setSelectedStages(STAGE_ORDER.filter(stage => showSet.stages[stage].status === 'complete'));
+    }
+  }, [open, showSet]);
+
+  return (
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{t('showset.unlockTitle', 'Unlock ShowSet')}</DialogTitle>
+          <DialogDescription>
+            {t('showset.unlockDescription', 'Select which stages need rework. Selected stages will be set to "Revision Required".')}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="py-4 space-y-3">
+          {STAGE_ORDER.map(stage => {
+            const stageInfo = showSet.stages[stage];
+            const isComplete = stageInfo.status === 'complete';
+            return (
+              <div key={stage} className="flex items-center space-x-3">
+                <Checkbox
+                  id={`unlock-${stage}`}
+                  checked={selectedStages.includes(stage)}
+                  onCheckedChange={() => toggleStage(stage)}
+                  disabled={!isComplete}
+                />
+                <Label htmlFor={`unlock-${stage}`} className="flex-1 flex items-center justify-between cursor-pointer">
+                  <span className={!isComplete ? 'text-muted-foreground' : ''}>{t(`stages.${stage}`)}</span>
+                  <span className="text-xs text-muted-foreground">{t(`status.${stageInfo.status}`)}</span>
+                </Label>
+              </div>
+            );
+          })}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={isLoading}>
+            {t('common.cancel')}
+          </Button>
+          <Button onClick={handleConfirm} disabled={isLoading}>
+            {isLoading ? t('common.loading') : t('showset.unlock', 'Unlock')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: ShowSetDetailProps) {
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
@@ -87,6 +168,9 @@ export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: Sho
   const [revisionDialogOpen, setRevisionDialogOpen] = useState(false);
   const [revisionStage, setRevisionStage] = useState<StageName | null>(null);
   const [revisionNote, setRevisionNote] = useState('');
+
+  // Unlock dialog state
+  const [unlockDialogOpen, setUnlockDialogOpen] = useState(false);
 
   const { data: notes = [] } = useQuery({
     queryKey: ['notes', showSet.showSetId],
@@ -219,9 +303,10 @@ export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: Sho
 
   // Unlock mutation
   const unlockMutation = useMutation({
-    mutationFn: () => showSetsApi.unlock(showSet.showSetId),
+    mutationFn: (stagesToReset: StageName[]) => showSetsApi.unlock(showSet.showSetId, stagesToReset),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['showsets'] });
+      setUnlockDialogOpen(false);
     },
   });
 
@@ -260,7 +345,7 @@ export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: Sho
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => unlockMutation.mutate()}
+                onClick={() => setUnlockDialogOpen(true)}
                 disabled={unlockMutation.isPending}
               >
                 <LockOpen className="h-4 w-4 mr-1" />
@@ -556,6 +641,15 @@ export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: Sho
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Unlock Dialog */}
+      <UnlockDialog
+        showSet={showSet}
+        open={unlockDialogOpen}
+        onClose={() => setUnlockDialogOpen(false)}
+        onConfirm={(stagesToReset) => unlockMutation.mutate(stagesToReset)}
+        isLoading={unlockMutation.isPending}
+      />
 
     </>
   );

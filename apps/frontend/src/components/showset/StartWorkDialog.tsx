@@ -54,7 +54,9 @@ function canWorkOnStatus(status: StageStatus, role: UserRole): boolean {
 function downstreamNeedsRevision(showSet: ShowSet, stage: StageName): boolean {
   switch (stage) {
     case 'screen':
-      return showSet.stages.structure.status === 'revision_required';
+      return showSet.stages.structure.status === 'revision_required' ||
+             showSet.stages.integrated.status === 'revision_required' ||
+             showSet.stages.inBim360.status === 'revision_required';
     case 'structure':
       return showSet.stages.integrated.status === 'revision_required' ||
              showSet.stages.inBim360.status === 'revision_required';
