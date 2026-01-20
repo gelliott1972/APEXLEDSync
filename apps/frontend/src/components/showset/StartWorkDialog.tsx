@@ -18,6 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { RecallDialog } from './RecallDialog';
 
 // Helper to check if ShowSet is locked (simple flag - admin controls)
 function isShowSetLocked(showSet: ShowSet): boolean {
@@ -39,9 +40,15 @@ const STAGES_ORDER: StageName[] = [
 ];
 
 // Workers (3d_modeller, 2d_drafter, bim_coordinator) can work on: not_started, in_progress, revision_required
+// Workers can also recall from review states
 // Reviewers (engineer, admin) can also approve review states
-const WORKABLE_STATUSES_WORKER: StageStatus[] = ['not_started', 'in_progress', 'revision_required'];
+const WORKABLE_STATUSES_WORKER: StageStatus[] = ['not_started', 'in_progress', 'revision_required', 'engineer_review', 'client_review'];
 const WORKABLE_STATUSES_REVIEWER: StageStatus[] = ['not_started', 'in_progress', 'revision_required', 'engineer_review', 'client_review'];
+
+// Check if a stage is in a review state that can be recalled
+function isInReviewState(status: StageStatus): boolean {
+  return status === 'engineer_review' || status === 'client_review';
+}
 
 function canWorkOnStatus(status: StageStatus, role: UserRole): boolean {
   if (role === 'engineer' || role === 'admin') {
@@ -70,12 +77,14 @@ function downstreamNeedsRevision(showSet: ShowSet, stage: StageName): boolean {
 }
 
 export function StartWorkDialog({ showSet, open, onClose }: StartWorkDialogProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const { effectiveRole } = useAuthStore();
   const { startSession } = useSessionStore();
   const [selectedStages, setSelectedStages] = useState<StageName[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [recallDialogOpen, setRecallDialogOpen] = useState(false);
+  const [recallStage, setRecallStage] = useState<StageName | null>(null);
 
   const currentRole = effectiveRole();
 
@@ -115,11 +124,56 @@ export function StartWorkDialog({ showSet, open, onClose }: StartWorkDialogProps
   });
 
   const toggleStage = (stage: StageName) => {
+    const stageInfo = showSet.stages[stage];
+
+    // If stage is in review state, open recall dialog instead of toggling
+    if (isInReviewState(stageInfo.status)) {
+      setRecallStage(stage);
+      setRecallDialogOpen(true);
+      return;
+    }
+
     setSelectedStages((prev) =>
       prev.includes(stage)
         ? prev.filter((s) => s !== stage)
         : [...prev, stage]
     );
+  };
+
+  // Handle recall confirmation
+  const handleRecallConfirm = async (targetStage: StageName, startWork: boolean, note?: string) => {
+    setIsSubmitting(true);
+    try {
+      // Use the recall endpoint - backend will handle cascade
+      const currentLang = i18n.language as 'en' | 'zh' | 'zh-TW';
+      await showSetsApi.updateStage(showSet.showSetId, targetStage, {
+        status: startWork ? 'in_progress' : 'revision_required',
+        recallTarget: targetStage,
+        recallFrom: recallStage!,
+        revisionNote: note,
+        revisionNoteLang: currentLang,
+      });
+
+      // If starting work, start a session
+      if (startWork) {
+        const stageName = t(`stages.${targetStage}`);
+        await startSession(
+          showSet.showSetId,
+          [targetStage],
+          `${t('sessions.workingOn')} ${showSet.showSetId}: ${stageName}`
+        );
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['showsets'] });
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      setRecallDialogOpen(false);
+      setRecallStage(null);
+      onClose();
+    } catch (error) {
+      console.error('Failed to recall stage:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleStart = async () => {
@@ -147,7 +201,7 @@ export function StartWorkDialog({ showSet, open, onClose }: StartWorkDialogProps
       await startSession(
         showSet.showSetId,
         selectedStages,
-        `Working on ${showSet.showSetId}: ${stageNames}`
+        `${t('sessions.workingOn')} ${showSet.showSetId}: ${stageNames}`
       );
 
       queryClient.invalidateQueries({ queryKey: ['showsets'] });
@@ -163,6 +217,8 @@ export function StartWorkDialog({ showSet, open, onClose }: StartWorkDialogProps
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
       setSelectedStages([]);
+      setRecallDialogOpen(false);
+      setRecallStage(null);
       onClose();
     }
   };
@@ -241,6 +297,20 @@ export function StartWorkDialog({ showSet, open, onClose }: StartWorkDialogProps
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* Recall dialog for stages in review */}
+      {recallStage && (
+        <RecallDialog
+          showSet={showSet}
+          reviewStage={recallStage}
+          open={recallDialogOpen}
+          onClose={() => {
+            setRecallDialogOpen(false);
+            setRecallStage(null);
+          }}
+          onConfirm={handleRecallConfirm}
+        />
+      )}
     </Dialog>
   );
 }

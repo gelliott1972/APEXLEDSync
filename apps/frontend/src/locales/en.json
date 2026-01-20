@@ -123,7 +123,13 @@
     "noAvailableStages": "No stages available to work on.",
     "finishWorkDescription": "You are currently working on: {{stages}}",
     "markComplete": "Mark as complete:",
-    "incrementVersion": "Increment version"
+    "incrementVersion": "Increment version",
+    "recallFromReview": "Recall from Review",
+    "selectRecallTarget": "Select which stage needs the fix",
+    "recallNote": "Describe the issue (optional)",
+    "recallNotePlaceholder": "Enter what needs to be fixed...",
+    "recallWarning": "This will reset {{stages}} to revision required",
+    "startWorkingOnStage": "Start working on this stage now"
   },
   "admin": {
     "title": "Administration",
@@ -145,7 +151,13 @@
     "copyInviteMessage": "Copy this invite message to send to the user:",
     "alwaysEnabled": "Always on",
     "resetPassword": "Reset Password",
-    "resetPasswordDesc": "Generate a new temporary password for this user. They will need to set a new password on next login."
+    "resetPasswordDesc": "Generate a new temporary password for this user. They will need to set a new password on next login.",
+    "inviteGreeting": "Hi {{name}},",
+    "inviteIntro": "You've been invited to UniSync BIM Coordination Board.",
+    "inviteLoginUrl": "Login URL: {{url}}",
+    "inviteEmail": "Email: {{email}}",
+    "inviteTempPassword": "Temporary Password: {{password}}",
+    "invitePasswordNote": "You'll be asked to set a new password on your first login."
   },
   "roles": {
     "admin": "Admin",

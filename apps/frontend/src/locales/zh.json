@@ -123,7 +123,13 @@
     "noAvailableStages": "没有可处理的阶段。",
     "finishWorkDescription": "您当前正在处理：{{stages}}",
     "markComplete": "标记为完成：",
-    "incrementVersion": "增加版本号"
+    "incrementVersion": "增加版本号",
+    "recallFromReview": "从审核中撤回",
+    "selectRecallTarget": "选择需要修复的阶段",
+    "recallNote": "描述问题（可选）",
+    "recallNotePlaceholder": "输入需要修复的内容...",
+    "recallWarning": "这将把 {{stages}} 重置为需要修改",
+    "startWorkingOnStage": "立即开始此阶段的工作"
   },
   "admin": {
     "title": "管理",
@@ -145,7 +151,13 @@
     "copyInviteMessage": "复制此邀请消息发送给用户：",
     "alwaysEnabled": "始终开启",
     "resetPassword": "重置密码",
-    "resetPasswordDesc": "为此用户生成新的临时密码。下次登录时需要设置新密码。"
+    "resetPasswordDesc": "为此用户生成新的临时密码。下次登录时需要设置新密码。",
+    "inviteGreeting": "您好 {{name}}，",
+    "inviteIntro": "您已被邀请加入 UniSync BIM 协调看板。",
+    "inviteLoginUrl": "登录网址：{{url}}",
+    "inviteEmail": "邮箱：{{email}}",
+    "inviteTempPassword": "临时密码：{{password}}",
+    "invitePasswordNote": "首次登录时需要设置新密码。"
   },
   "roles": {
     "admin": "管理员",

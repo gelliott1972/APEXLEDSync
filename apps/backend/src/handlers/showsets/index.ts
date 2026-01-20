@@ -140,8 +140,12 @@ const stageUpdateSchema = z.object({
   status: z.enum(['not_started', 'in_progress', 'complete', 'on_hold', 'client_review', 'engineer_review', 'revision_required']),
   assignedTo: z.string().nullable().optional(),
   version: z.string().optional(),
-  revisionNote: z.string().optional(), // Required when setting revision_required
+  revisionNote: z.string().optional(), // Required when setting revision_required, optional for recall
   revisionNoteLang: z.enum(['en', 'zh', 'zh-TW']).optional(),
+  // Recall from review: target stage to start working on
+  recallTarget: z.enum(['screen', 'structure', 'integrated', 'inBim360', 'drawing2d']).optional(),
+  // Recall from review: stage that was in review when recall initiated
+  recallFrom: z.enum(['screen', 'structure', 'integrated', 'inBim360', 'drawing2d']).optional(),
 });
 
 // Schema for manual version update - 3 deliverables
@@ -575,7 +579,7 @@ const updateStage: AuthenticatedHandler = async (event, auth) => {
       });
     }
 
-    const { status, assignedTo, version, revisionNote, revisionNoteLang } = parsed.data;
+    const { status, assignedTo, version, revisionNote, revisionNoteLang, recallTarget, recallFrom } = parsed.data;
 
     // Engineers can only approve (complete) or request revision
     if (isEngineer(auth.role) && !ENGINEER_ALLOWED_STATUSES.includes(status)) {
@@ -583,7 +587,8 @@ const updateStage: AuthenticatedHandler = async (event, auth) => {
     }
 
     // Validate revision_required - only valid for certain stages and requires a note
-    if (status === 'revision_required') {
+    // Exception: revision_required without note is allowed for recall cascades (we set a default message)
+    if (status === 'revision_required' && !recallTarget) {
       if (!REVISION_STAGES.includes(stageName)) {
         return validationError('revision_required status is only valid for Integrated, InBim360, and Drawing2d stages');
       }
@@ -611,6 +616,170 @@ const updateStage: AuthenticatedHandler = async (event, auth) => {
     // Check if ShowSet is locked (completed and not unlocked)
     if (isShowSetLocked(currentShowSet) && status === 'in_progress') {
       return forbidden('ShowSet is locked. An admin must unlock it before changes can be made.');
+    }
+
+    // Handle recall from review - special case
+    if (recallTarget && recallFrom) {
+      // Validate that recallFrom is in a review state
+      const recallFromStage = currentShowSet.stages[recallFrom];
+      if (recallFromStage.status !== 'engineer_review' && recallFromStage.status !== 'client_review') {
+        return validationError('Recall is only valid when the source stage is in review');
+      }
+
+      // Validate that recallTarget is upstream of or equal to recallFrom
+      const targetIdx = STAGE_ORDER.indexOf(recallTarget);
+      const fromIdx = STAGE_ORDER.indexOf(recallFrom);
+      if (targetIdx > fromIdx) {
+        return validationError('Recall target must be upstream of or equal to the review stage');
+      }
+
+      // Check permission for the target stage
+      if (!canUpdateStage(auth.role, recallTarget)) {
+        return forbidden(`You do not have permission to update the ${recallTarget} stage`);
+      }
+
+      // Build the update expression for recall
+      const recallTimestamp = now();
+      const targetVType = getVersionTypeForStage(recallTarget);
+      let recallNewVersion: number | undefined;
+      let recallVersionEntry: VersionHistoryEntry | undefined;
+
+      // Increment version on target if starting work (in_progress)
+      if (status === 'in_progress' && targetVType) {
+        let currentVer: number;
+        if (targetVType === 'revitVersion') {
+          currentVer = currentShowSet.revitVersion
+            ?? Math.max(currentShowSet.structureVersion ?? 1, currentShowSet.integratedVersion ?? 1);
+        } else {
+          currentVer = currentShowSet[targetVType] ?? 1;
+        }
+        recallNewVersion = currentVer + 1;
+        recallVersionEntry = {
+          id: generateId(),
+          versionType: targetVType,
+          version: recallNewVersion,
+          reason: { en: '', zh: '', 'zh-TW': '' },
+          createdAt: recallTimestamp,
+          createdBy: auth.userId,
+        };
+      }
+
+      // Target stage gets the requested status (in_progress or revision_required)
+      const targetStageUpdate: Record<string, unknown> = {
+        ...currentShowSet.stages[recallTarget],
+        status,
+        updatedBy: auth.userId,
+        updatedAt: recallTimestamp,
+      };
+
+      let recallUpdateExpr = 'SET stages.#targetStage = :targetStageUpdate, #updatedAt = :updatedAt';
+      const recallExprNames: Record<string, string> = {
+        '#targetStage': recallTarget,
+        '#updatedAt': 'updatedAt',
+      };
+      const recallExprValues: Record<string, unknown> = {
+        ':targetStageUpdate': targetStageUpdate,
+        ':updatedAt': recallTimestamp,
+      };
+
+      // Add version increment if needed
+      if (recallNewVersion !== undefined && targetVType) {
+        recallUpdateExpr += ', #versionType = :recallNewVersion';
+        recallExprNames['#versionType'] = targetVType;
+        recallExprValues[':recallNewVersion'] = recallNewVersion;
+      }
+
+      // Add version history entry if needed
+      if (recallVersionEntry) {
+        recallUpdateExpr += ', versionHistory = list_append(if_not_exists(versionHistory, :emptyList), :historyEntry)';
+        recallExprValues[':emptyList'] = [];
+        recallExprValues[':historyEntry'] = [recallVersionEntry];
+      }
+
+      // Set stages between target and recallFrom (exclusive of target, inclusive of recallFrom) to revision_required
+      const stagesToReset: StageName[] = [];
+      for (let i = targetIdx + 1; i <= fromIdx; i++) {
+        const stageToReset = STAGE_ORDER[i];
+        stagesToReset.push(stageToReset);
+        const resetStage = {
+          ...currentShowSet.stages[stageToReset],
+          status: 'revision_required',
+          updatedBy: auth.userId,
+          updatedAt: recallTimestamp,
+        };
+        recallUpdateExpr += `, stages.#stage_${stageToReset} = :stageReset_${stageToReset}`;
+        recallExprNames[`#stage_${stageToReset}`] = stageToReset;
+        recallExprValues[`:stageReset_${stageToReset}`] = resetStage;
+      }
+
+      // Also set downstream complete stages to revision_required
+      const downstreamToReset: StageName[] = [];
+      for (let i = fromIdx + 1; i < STAGE_ORDER.length; i++) {
+        const dsStage = STAGE_ORDER[i];
+        if (currentShowSet.stages[dsStage].status === 'complete') {
+          downstreamToReset.push(dsStage);
+          const resetStage = {
+            ...currentShowSet.stages[dsStage],
+            status: 'revision_required',
+            updatedBy: auth.userId,
+            updatedAt: recallTimestamp,
+          };
+          recallUpdateExpr += `, stages.#ds_${dsStage} = :dsReset_${dsStage}`;
+          recallExprNames[`#ds_${dsStage}`] = dsStage;
+          recallExprValues[`:dsReset_${dsStage}`] = resetStage;
+        }
+      }
+
+      // Execute the recall update
+      await docClient.send(
+        new UpdateCommand({
+          TableName: TABLE_NAMES.SHOWSETS,
+          Key: keys.showSet(showSetId),
+          UpdateExpression: recallUpdateExpr,
+          ExpressionAttributeNames: recallExprNames,
+          ExpressionAttributeValues: recallExprValues,
+        })
+      );
+
+      // Create a revision note if provided
+      if (revisionNote && revisionNoteLang) {
+        await createRevisionNote(
+          showSetId,
+          recallTarget,
+          revisionNote,
+          revisionNoteLang,
+          auth.userId,
+          auth.name
+        );
+      }
+
+      // Log recall activity
+      await logActivity(showSetId, auth.userId, auth.name, 'recall_from_review', {
+        recallFrom,
+        recallTarget,
+        startedWork: status === 'in_progress',
+        stagesReset: [...stagesToReset, ...downstreamToReset],
+        versionBumped: recallNewVersion !== undefined,
+      });
+
+      // Log version bump if applicable
+      if (recallNewVersion !== undefined && targetVType) {
+        let prevVersion: number;
+        if (targetVType === 'revitVersion') {
+          prevVersion = currentShowSet.revitVersion
+            ?? Math.max(currentShowSet.structureVersion ?? 1, currentShowSet.integratedVersion ?? 1);
+        } else {
+          prevVersion = currentShowSet[targetVType] ?? 1;
+        }
+        await logActivity(showSetId, auth.userId, auth.name, 'version_bump', {
+          versionType: targetVType,
+          from: prevVersion,
+          to: recallNewVersion,
+          trigger: 'recall',
+        });
+      }
+
+      return success({ message: 'Stage recalled successfully' });
     }
 
     // Cascade downstream stages when re-working a completed stage

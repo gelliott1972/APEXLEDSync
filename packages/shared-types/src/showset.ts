@@ -130,6 +130,10 @@ export interface StageUpdateInput {
   version?: string;
   revisionNote?: string;
   revisionNoteLang?: 'en' | 'zh' | 'zh-TW';
+  // Recall from review: target stage to start working on
+  recallTarget?: StageName;
+  // Recall from review: stage that was in review when recall initiated
+  recallFrom?: StageName;
 }
 
 export interface LinksUpdateInput {
