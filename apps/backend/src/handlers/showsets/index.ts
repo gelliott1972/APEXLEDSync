@@ -1071,6 +1071,11 @@ const updateVersion: AuthenticatedHandler = async (event, auth) => {
       return validationError('ShowSet ID is required');
     }
 
+    // Authorization check: only admin or users with canEditVersions permission
+    if (!auth.canEditVersions) {
+      return forbidden('You do not have permission to edit versions');
+    }
+
     const body = JSON.parse(event.body ?? '{}');
     const parsed = versionUpdateSchema.safeParse(body);
 

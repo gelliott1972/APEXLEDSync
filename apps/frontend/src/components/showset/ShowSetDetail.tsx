@@ -50,6 +50,29 @@ function isShowSetLocked(showSet: ShowSet): boolean {
   return !!showSet.lockedAt;
 }
 
+// Check if a downstream stage needs revision, meaning this stage may need rework
+// (Duplicated from StartWorkDialog.tsx for use in status display)
+function downstreamNeedsRevision(showSet: ShowSet, stage: StageName): boolean {
+  switch (stage) {
+    case 'screen':
+      return showSet.stages.structure.status === 'revision_required' ||
+             showSet.stages.integrated.status === 'revision_required' ||
+             showSet.stages.inBim360.status === 'revision_required';
+    case 'structure':
+      return showSet.stages.integrated.status === 'revision_required' ||
+             showSet.stages.inBim360.status === 'revision_required';
+    case 'integrated':
+      // If BIM360 or drawing2d needs revision, integrated model may need fixes
+      return showSet.stages.inBim360.status === 'revision_required' ||
+             showSet.stages.drawing2d.status === 'revision_required';
+    case 'inBim360':
+      // If drawing2d needs revision, BIM360 may need fixes
+      return showSet.stages.drawing2d.status === 'revision_required';
+    default:
+      return false;
+  }
+}
+
 interface ShowSetDetailProps {
   showSet: ShowSet;
   open: boolean;
@@ -485,8 +508,30 @@ export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: Sho
                   }
                 };
 
+                // Check if this stage is complete but has downstream rejection
+                const needsAttention = status === 'complete' && downstreamNeedsRevision(showSet, stage);
+
                 // Status icon and color
                 const getStatusIcon = () => {
+                  // Special case: complete but downstream stage has rejection
+                  if (needsAttention) {
+                    return (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="relative cursor-help">
+                              <CheckCircle2 className="h-5 w-5 text-orange-500" />
+                              <AlertTriangle className="h-3 w-3 text-orange-600 absolute -top-1 -right-1" />
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent side="right" className="max-w-xs needs-attention-tooltip">
+                            <p className="font-medium">{t('status.needsAttention', 'Complete but downstream stage needs revision')}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    );
+                  }
+
                   switch (status) {
                     case 'complete':
                       return <CheckCircle2 className="h-5 w-5 text-emerald-500" />;

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from './stores/auth-store';
 import { useSessionStore } from './stores/session-store';
 import { Layout } from './components/layout/Layout';
@@ -38,8 +39,17 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   const { restoreSession } = useSessionStore();
+  const { i18n } = useTranslation();
+
+  // Apply user's preferred language when they log in
+  useEffect(() => {
+    if (user?.preferredLang) {
+      i18n.changeLanguage(user.preferredLang);
+      localStorage.setItem('language', user.preferredLang);
+    }
+  }, [user?.preferredLang, i18n]);
 
   // Restore session from backend on app mount (if authenticated)
   useEffect(() => {

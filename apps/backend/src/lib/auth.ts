@@ -7,6 +7,7 @@ export interface AuthContext {
   name: string;
   role: UserRole;
   cognitoSub: string;
+  canEditVersions: boolean;
 }
 
 export function getAuthContext(event: APIGatewayProxyEvent): AuthContext | null {
@@ -16,12 +17,15 @@ export function getAuthContext(event: APIGatewayProxyEvent): AuthContext | null 
     return null;
   }
 
+  const role = (claims['custom:role'] ?? 'viewer') as UserRole;
   return {
     userId: claims['custom:userId'] ?? claims.sub,
     email: claims.email,
     name: claims.name ?? claims.email,
-    role: (claims['custom:role'] ?? 'viewer') as UserRole,
+    role,
     cognitoSub: claims.sub,
+    // Admins always have version edit permission; others need explicit grant
+    canEditVersions: role === 'admin' || claims['custom:canEditVersions'] === 'true',
   };
 }
 

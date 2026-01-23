@@ -135,6 +135,19 @@
   border-color: rgba(245, 158, 11, 0.3);
 }
 
+/* Needs attention tooltip styling - orange theme for complete-but-needs-attention states */
+.needs-attention-tooltip {
+  background: #fff7ed !important;
+  border-color: #fed7aa !important;
+  color: #9a3412 !important;
+}
+
+.dark .needs-attention-tooltip {
+  background: rgba(249, 115, 22, 0.2) !important;
+  border-color: rgba(249, 115, 22, 0.4) !important;
+  color: #fdba74 !important;
+}
+
 /* Mobile responsive styles */
 .table-scroll-container {
   overflow-x: auto;
