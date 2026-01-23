@@ -278,7 +278,7 @@ export function CreateShowSetDialog({ open, onClose }: CreateShowSetDialogProps)
   return (
     <div className="fixed inset-0 z-50 bg-black/50">
       <div
-        className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background rounded-lg shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto"
+        className="fixed left-1/2 top-[45%] -translate-x-1/2 -translate-y-1/2 bg-background rounded-lg shadow-lg w-full max-w-md max-h-[85vh] overflow-y-auto"
       >
         <div className="flex items-center justify-between p-4 border-b">
           <h2 className="text-base font-semibold">{t('showset.createNew')}</h2>
@@ -330,7 +330,7 @@ export function CreateShowSetDialog({ open, onClose }: CreateShowSetDialogProps)
 
           {/* Descriptions */}
           <div className="space-y-2 pt-1">
-            <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Descriptions</h3>
+            <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('showset.descriptions')}</h3>
             {renderDescriptionField(currentLang)}
             {(['en', 'zh', 'zh-TW'] as LanguageKey[])
               .filter(lang => lang !== currentLang)

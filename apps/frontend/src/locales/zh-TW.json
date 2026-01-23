@@ -64,7 +64,8 @@
     "lock": "鎖定",
     "unlock": "解鎖",
     "lockedMessage": "此展示組已鎖定。請聯繫管理員解鎖。",
-    "cascadeWarning": "開始此階段的工作將重置所有後續階段。"
+    "cascadeWarning": "開始此階段的工作將重置所有後續階段。",
+    "descriptions": "描述"
   },
   "stages": {
     "screen": "螢幕",

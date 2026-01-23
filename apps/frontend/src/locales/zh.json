@@ -64,7 +64,8 @@
     "lock": "锁定",
     "unlock": "解锁",
     "lockedMessage": "此展示组已锁定。请联系管理员解锁。",
-    "cascadeWarning": "开始此阶段的工作将重置所有后续阶段。"
+    "cascadeWarning": "开始此阶段的工作将重置所有后续阶段。",
+    "descriptions": "描述"
   },
   "stages": {
     "screen": "屏幕",

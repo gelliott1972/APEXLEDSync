@@ -64,7 +64,8 @@
     "lock": "Lock",
     "unlock": "Unlock",
     "lockedMessage": "This ShowSet is locked. Contact an Admin to unlock it.",
-    "cascadeWarning": "Starting work on this stage will reset all downstream stages."
+    "cascadeWarning": "Starting work on this stage will reset all downstream stages.",
+    "descriptions": "Descriptions"
   },
   "stages": {
     "screen": "Screen",
