@@ -5,7 +5,6 @@ import { X, ExternalLink, Pencil, Trash2, ChevronDown, ChevronRight, Circle, Che
 import type { ShowSet, StageName, StageStatus, StageUpdateInput, Note } from '@unisync/shared-types';
 import { showSetsApi, notesApi } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
-import { STAGE_PERMISSIONS, ENGINEER_ALLOWED_STATUSES } from '@unisync/shared-types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
@@ -297,21 +296,15 @@ export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: Sho
     },
   });
 
-  const canUpdateStage = (stage: StageName) => {
-    if (!currentRole) return false;
-    // View-only users can never update stages
-    if (currentRole === 'view_only') return false;
-    return STAGE_PERMISSIONS[currentRole]?.includes(stage) ?? false;
+  // Only admin can change stage status directly in the side panel
+  // All other users change status through workflows (StartWorkDialog, FinishWorkDialog, ApprovalDialog)
+  const canUpdateStage = (_stage: StageName) => {
+    return currentRole === 'admin';
   };
 
-  // Get allowed statuses for a stage based on user role
-  // Engineers and customer_reviewers can only approve (complete) or request revision
+  // Get allowed statuses for a stage (admin only uses this)
   const getAllowedStatuses = (stage: StageName): StageStatus[] => {
-    const baseStatuses = STAGE_STATUSES[stage];
-    if (currentRole === 'engineer' || currentRole === 'customer_reviewer') {
-      return baseStatuses.filter((s) => ENGINEER_ALLOWED_STATUSES.includes(s));
-    }
-    return baseStatuses;
+    return STAGE_STATUSES[stage];
   };
 
   const canEditShowSet = currentRole === 'admin' || currentRole === 'bim_coordinator';
