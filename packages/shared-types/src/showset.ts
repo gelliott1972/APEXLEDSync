@@ -159,10 +159,15 @@ export const STAGE_PERMISSIONS: Record<string, StageName[]> = {
   engineer: ['screen', 'structure', 'integrated', 'inBim360', 'drawing2d'], // Can only approve/reject, not work
   '3d_modeller': ['screen', 'structure', 'integrated'],
   '2d_drafter': ['drawing2d'],
+  customer_reviewer: ['inBim360', 'drawing2d'], // Client review stages only, approval-only role
+  view_only: [], // No permissions to update any stages
 };
 
 // Engineer can only set these statuses (approval-only role)
 export const ENGINEER_ALLOWED_STATUSES: StageStatus[] = ['complete', 'revision_required'];
+
+// Customer reviewer can only set these statuses (approval-only role for client_review stages)
+export const CUSTOMER_REVIEWER_ALLOWED_STATUSES: StageStatus[] = ['complete', 'revision_required'];
 
 // Status colors for UI
 export const STATUS_COLORS: Record<StageStatus, string> = {

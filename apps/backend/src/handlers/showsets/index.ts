@@ -22,7 +22,7 @@ import type {
   Language,
   TranslationJob,
 } from '@unisync/shared-types';
-import { ENGINEER_ALLOWED_STATUSES } from '@unisync/shared-types';
+import { ENGINEER_ALLOWED_STATUSES, CUSTOMER_REVIEWER_ALLOWED_STATUSES } from '@unisync/shared-types';
 import { withAuth, canUpdateStage, canManageLinks, type AuthenticatedHandler } from '../../middleware/authorize.js';
 import {
   success,
@@ -31,7 +31,7 @@ import {
   forbidden,
   internalError,
 } from '../../lib/response.js';
-import { canManageShowSets, isEngineer } from '../../lib/auth.js';
+import { canManageShowSets, isEngineer, isCustomerReviewer, isViewOnly } from '../../lib/auth.js';
 
 // SQS client for translation queue
 const sqsClient = new SQSClient({
@@ -581,9 +581,21 @@ const updateStage: AuthenticatedHandler = async (event, auth) => {
 
     const { status, assignedTo, version, revisionNote, revisionNoteLang, recallTarget, recallFrom } = parsed.data;
 
+    // View-only users cannot update any stages
+    if (isViewOnly(auth.role)) {
+      return forbidden('View-only users cannot update stages');
+    }
+
     // Engineers can only approve (complete) or request revision
     if (isEngineer(auth.role) && !ENGINEER_ALLOWED_STATUSES.includes(status)) {
       return forbidden('Engineers can only approve (complete) or request revision');
+    }
+
+    // Customer reviewers can only approve/reject and only for stages in client_review status
+    if (isCustomerReviewer(auth.role)) {
+      if (!CUSTOMER_REVIEWER_ALLOWED_STATUSES.includes(status)) {
+        return forbidden('Customer reviewers can only approve (complete) or request revision');
+      }
     }
 
     // Validate revision_required - only valid for certain stages and requires a note
@@ -612,6 +624,16 @@ const updateStage: AuthenticatedHandler = async (event, auth) => {
     const currentShowSet = current.Item as ShowSet;
     const currentStage = currentShowSet.stages[stageName];
     const timestamp = now();
+
+    // Engineer can only update stages that are in engineer_review status
+    if (isEngineer(auth.role) && currentStage.status !== 'engineer_review') {
+      return forbidden('Engineers can only review stages that are in Engineer Review status');
+    }
+
+    // Customer reviewer can only update stages that are in client_review status
+    if (isCustomerReviewer(auth.role) && currentStage.status !== 'client_review') {
+      return forbidden('Customer reviewers can only review stages that are in Client Review status');
+    }
 
     // Check if ShowSet is locked (completed and not unlocked)
     if (isShowSetLocked(currentShowSet) && status === 'in_progress') {

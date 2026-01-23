@@ -60,6 +60,19 @@ export function isEngineer(role: UserRole): boolean {
   return role === 'engineer';
 }
 
+export function isCustomerReviewer(role: UserRole): boolean {
+  return role === 'customer_reviewer';
+}
+
+export function isViewOnly(role: UserRole): boolean {
+  return role === 'view_only';
+}
+
+// Roles that can only approve/reject, not work on stages
+export function isApprovalOnlyRole(role: UserRole): boolean {
+  return role === 'engineer' || role === 'customer_reviewer';
+}
+
 // Only admin can create/delete ShowSets
 export function canManageShowSets(role: UserRole): boolean {
   return role === 'admin';

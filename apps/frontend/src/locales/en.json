@@ -164,7 +164,9 @@
     "bim_coordinator": "BIM Coordinator",
     "engineer": "Engineer",
     "3d_modeller": "3D Modeller",
-    "2d_drafter": "2D Drafter"
+    "2d_drafter": "2D Drafter",
+    "customer_reviewer": "Customer Reviewer",
+    "view_only": "View Only"
   },
   "areas": {
     "311": "311 Attraction Tower",
@@ -187,5 +189,13 @@
   },
   "testing": {
     "roleSwitcher": "Test Roles"
+  },
+  "approval": {
+    "title": "Review Stages",
+    "description": "Review and approve or request revision for stages on {{id}}.",
+    "noStages": "No stages available for review.",
+    "selectStages": "Select stages to review",
+    "decision": "Decision",
+    "noteRequired": "A note is required when requesting revision."
   }
 }

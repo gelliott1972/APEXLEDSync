@@ -295,8 +295,12 @@ function AddNoteForm({
 
 export function NoteList({ showSetId, notes }: NoteListProps) {
   const { t } = useTranslation();
+  const { effectiveRole } = useAuthStore();
   const [isAdding, setIsAdding] = useState(false);
   const [showRevisionOnly, setShowRevisionOnly] = useState(false);
+
+  const currentRole = effectiveRole();
+  const isViewOnly = currentRole === 'view_only';
 
   // Count revision notes
   const revisionNoteCount = notes.filter((n) => n.isRevisionNote).length;
@@ -309,7 +313,7 @@ export function NoteList({ showSetId, notes }: NoteListProps) {
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        {!isAdding && (
+        {!isAdding && !isViewOnly && (
           <Button variant="outline" size="sm" onClick={() => setIsAdding(true)} className="flex-1">
             <Plus className="h-4 w-4 mr-1" />
             {t('notes.addNote')}

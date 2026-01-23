@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Square, Play, MessageSquare, Lock, Minus, Loader2, Check, AlertTriangle, Clock, Pause } from 'lucide-react';
 import type { ShowSet, StageName, StageStatus } from '@unisync/shared-types';
+import { useAuthStore } from '@/stores/auth-store';
 import { useSessionStore } from '@/stores/session-store';
 import { Button } from '@/components/ui/button';
 import { StartWorkDialog } from './StartWorkDialog';
 import { FinishWorkDialog } from './FinishWorkDialog';
+import { ApprovalDialog } from './ApprovalDialog';
 
 interface ShowSetTableProps {
   showSets: ShowSet[];
@@ -87,9 +89,15 @@ function StageCell({ status, version, isBeingWorked }: {
 
 export function ShowSetTable({ showSets, onSelect, onSelectNotes }: ShowSetTableProps) {
   const { t, i18n } = useTranslation();
+  const { effectiveRole } = useAuthStore();
   const { isWorking, currentShowSetId, workingStages } = useSessionStore();
   const [startDialogShowSet, setStartDialogShowSet] = useState<ShowSet | null>(null);
   const [finishDialogShowSet, setFinishDialogShowSet] = useState<ShowSet | null>(null);
+  const [approvalDialogShowSet, setApprovalDialogShowSet] = useState<ShowSet | null>(null);
+
+  const currentRole = effectiveRole();
+  const isApprovalOnlyRole = currentRole === 'engineer' || currentRole === 'customer_reviewer';
+  const isViewOnly = currentRole === 'view_only';
 
   const getDescription = (showSet: ShowSet) => {
     const lang = i18n.language as 'en' | 'zh' | 'zh-TW';
@@ -98,7 +106,12 @@ export function ShowSetTable({ showSets, onSelect, onSelectNotes }: ShowSetTable
 
   const handleStartWork = (e: React.MouseEvent, showSet: ShowSet) => {
     e.stopPropagation();
-    setStartDialogShowSet(showSet);
+    // Route to approval dialog for approval-only roles
+    if (isApprovalOnlyRole) {
+      setApprovalDialogShowSet(showSet);
+    } else {
+      setStartDialogShowSet(showSet);
+    }
   };
 
   const handleFinishWork = (e: React.MouseEvent, showSet: ShowSet) => {
@@ -175,27 +188,29 @@ export function ShowSetTable({ showSets, onSelect, onSelectNotes }: ShowSetTable
                   >
                     <MessageSquare className="h-3 w-3" />
                   </Button>
-                  {isWorking && currentShowSetId === showSet.showSetId ? (
-                    <Button
-                      variant="destructive"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={(e) => handleFinishWork(e, showSet)}
-                      title="Finish Working"
-                    >
-                      <Square className="h-3 w-3" />
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-muted-foreground hover:text-primary"
-                      onClick={(e) => handleStartWork(e, showSet)}
-                      title="Start Working"
-                      disabled={isWorking}
-                    >
-                      <Play className="h-3 w-3" />
-                    </Button>
+                  {!isViewOnly && (
+                    isWorking && currentShowSetId === showSet.showSetId ? (
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={(e) => handleFinishWork(e, showSet)}
+                        title="Finish Working"
+                      >
+                        <Square className="h-3 w-3" />
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-primary"
+                        onClick={(e) => handleStartWork(e, showSet)}
+                        title={isApprovalOnlyRole ? "Review" : "Start Working"}
+                        disabled={isWorking}
+                      >
+                        <Play className="h-3 w-3" />
+                      </Button>
+                    )
                   )}
                 </div>
               </td>
@@ -256,6 +271,15 @@ export function ShowSetTable({ showSets, onSelect, onSelectNotes }: ShowSetTable
           showSet={finishDialogShowSet}
           open={true}
           onClose={() => setFinishDialogShowSet(null)}
+        />
+      )}
+
+      {/* Approval Dialog (for engineer/customer_reviewer) */}
+      {approvalDialogShowSet && (
+        <ApprovalDialog
+          showSet={approvalDialogShowSet}
+          open={true}
+          onClose={() => setApprovalDialogShowSet(null)}
         />
       )}
     </div>

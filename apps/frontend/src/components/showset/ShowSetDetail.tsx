@@ -179,7 +179,8 @@ function UnlockDialog({ showSet, open, onClose, onConfirm, isLoading }: UnlockDi
 export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: ShowSetDetailProps) {
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
-  const { user } = useAuthStore();
+  const { effectiveRole } = useAuthStore();
+  const currentRole = effectiveRole();
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -297,23 +298,25 @@ export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: Sho
   });
 
   const canUpdateStage = (stage: StageName) => {
-    if (!user) return false;
-    return STAGE_PERMISSIONS[user.role]?.includes(stage) ?? false;
+    if (!currentRole) return false;
+    // View-only users can never update stages
+    if (currentRole === 'view_only') return false;
+    return STAGE_PERMISSIONS[currentRole]?.includes(stage) ?? false;
   };
 
   // Get allowed statuses for a stage based on user role
-  // Engineers can only approve (complete) or request revision
+  // Engineers and customer_reviewers can only approve (complete) or request revision
   const getAllowedStatuses = (stage: StageName): StageStatus[] => {
     const baseStatuses = STAGE_STATUSES[stage];
-    if (user?.role === 'engineer') {
+    if (currentRole === 'engineer' || currentRole === 'customer_reviewer') {
       return baseStatuses.filter((s) => ENGINEER_ALLOWED_STATUSES.includes(s));
     }
     return baseStatuses;
   };
 
-  const canEdit = user?.role === 'admin' || user?.role === 'bim_coordinator';
-  const canDelete = user?.role === 'admin';
-  const isAdmin = user?.role === 'admin';
+  const canEditShowSet = currentRole === 'admin' || currentRole === 'bim_coordinator';
+  const canDelete = currentRole === 'admin';
+  const isAdmin = currentRole === 'admin';
   const isLocked = isShowSetLocked(showSet);
 
   // Lock mutation
@@ -386,7 +389,7 @@ export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: Sho
               </Button>
             )
           )}
-          {canEdit && (
+          {canEditShowSet && (
             <Button variant="ghost" size="icon" onClick={() => setEditDialogOpen(true)}>
               <Pencil className="h-4 w-4" />
             </Button>

@@ -164,7 +164,9 @@
     "bim_coordinator": "BIM 协调员",
     "engineer": "工程师",
     "3d_modeller": "3D 建模师",
-    "2d_drafter": "2D 制图员"
+    "2d_drafter": "2D 制图员",
+    "customer_reviewer": "客户审核员",
+    "view_only": "仅查看"
   },
   "areas": {
     "311": "311 景点塔",
@@ -187,5 +189,13 @@
   },
   "testing": {
     "roleSwitcher": "测试角色"
+  },
+  "approval": {
+    "title": "审核阶段",
+    "description": "审核并批准或请求修改 {{id}} 的阶段。",
+    "noStages": "没有可审核的阶段。",
+    "selectStages": "选择要审核的阶段",
+    "decision": "决定",
+    "noteRequired": "请求修改时需要填写备注。"
   }
 }

@@ -28,7 +28,7 @@ import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { CreateShowSetDialog } from '@/components/showset/CreateShowSetDialog';
 
-const ALL_ROLES: UserRole[] = ['admin', 'bim_coordinator', 'engineer', '3d_modeller', '2d_drafter'];
+const ALL_ROLES: UserRole[] = ['admin', 'bim_coordinator', 'engineer', '3d_modeller', '2d_drafter', 'customer_reviewer', 'view_only'];
 
 export function Header() {
   const { t, i18n } = useTranslation();

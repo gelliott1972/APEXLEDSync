@@ -164,7 +164,9 @@
     "bim_coordinator": "BIM 協調員",
     "engineer": "工程師",
     "3d_modeller": "3D 建模師",
-    "2d_drafter": "2D 製圖員"
+    "2d_drafter": "2D 製圖員",
+    "customer_reviewer": "客戶審核員",
+    "view_only": "僅檢視"
   },
   "areas": {
     "311": "311 景點塔",
@@ -187,5 +189,13 @@
   },
   "testing": {
     "roleSwitcher": "測試角色"
+  },
+  "approval": {
+    "title": "審核階段",
+    "description": "審核並批准或請求修改 {{id}} 的階段。",
+    "noStages": "沒有可審核的階段。",
+    "selectStages": "選擇要審核的階段",
+    "decision": "決定",
+    "noteRequired": "請求修改時需要填寫備註。"
   }
 }
