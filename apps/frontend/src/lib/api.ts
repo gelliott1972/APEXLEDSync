@@ -257,7 +257,7 @@ export const usersApi = {
     request<void>(`/users/${userId}`, { method: 'DELETE' }),
 
   resetPassword: (userId: string, skipEmail = true) =>
-    request<{ message: string; tempPassword: string; email: string; name: string }>(
+    request<{ message: string; tempPassword: string; email: string; name: string; preferredLang?: Language }>(
       `/users/${userId}/reset-password`,
       {
         method: 'POST',

@@ -468,6 +468,7 @@ const resetPassword: AuthenticatedHandler = async (event, auth) => {
         tempPassword,
         email: existingUser.email,
         name: existingUser.name,
+        preferredLang: existingUser.preferredLang,
       });
     }
 
@@ -478,6 +479,7 @@ const resetPassword: AuthenticatedHandler = async (event, auth) => {
       tempPassword,
       email: existingUser.email,
       name: existingUser.name,
+      preferredLang: existingUser.preferredLang,
     });
   } catch (err) {
     console.error('Error resetting password:', err);

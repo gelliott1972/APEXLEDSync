@@ -121,12 +121,6 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   },
 }));
 
-// Clean up session on page unload
-if (typeof window !== 'undefined') {
-  window.addEventListener('beforeunload', () => {
-    const { isWorking, endSession } = useSessionStore.getState();
-    if (isWorking) {
-      endSession();
-    }
-  });
-}
+// Note: We intentionally do NOT end the session on beforeunload/refresh.
+// The session will be restored from the backend on page load via restoreSession().
+// Sessions have a 5-minute TTL and are kept alive by heartbeat.

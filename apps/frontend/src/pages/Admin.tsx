@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import i18n from '@/lib/i18n';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2, FileEdit, Loader2, Copy, Check } from 'lucide-react';
 import { usersApi } from '@/lib/api';
@@ -36,7 +37,7 @@ export function AdminPage() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [inviteData, setInviteData] = useState<{ email: string; name: string; tempPassword: string } | null>(null);
+  const [inviteData, setInviteData] = useState<{ email: string; name: string; tempPassword: string; preferredLang: Language } | null>(null);
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['users'],
@@ -54,6 +55,7 @@ export function AdminPage() {
           email: data.email,
           name: data.name,
           tempPassword: data.tempPassword,
+          preferredLang: data.preferredLang || 'en',
         });
       }
     },
@@ -116,6 +118,7 @@ export function AdminPage() {
         email: data.email,
         name: data.name,
         tempPassword: data.tempPassword,
+        preferredLang: data.preferredLang || 'en',
       });
     },
   });
@@ -257,6 +260,7 @@ export function AdminPage() {
           email={inviteData.email}
           name={inviteData.name}
           tempPassword={inviteData.tempPassword}
+          preferredLang={inviteData.preferredLang}
           onClose={() => setInviteData(null)}
           t={t}
         />
@@ -534,27 +538,31 @@ function InviteDialog({
   email,
   name,
   tempPassword,
+  preferredLang,
   onClose,
   t,
 }: {
   email: string;
   name: string;
   tempPassword: string;
+  preferredLang: Language;
   onClose: () => void;
   t: (key: string) => string;
 }) {
   const [copied, setCopied] = useState(false);
   const appUrl = import.meta.env.VITE_APP_URL || window.location.origin;
 
-  const inviteMessage = `Hi ${name},
+  // Use the user's preferred language for the invite message
+  const tUser = i18n.getFixedT(preferredLang);
+  const inviteMessage = `${tUser('admin.inviteGreeting', { name })}
 
-You've been invited to UniSync BIM Coordination Board.
+${tUser('admin.inviteIntro')}
 
-Login URL: ${appUrl}
-Email: ${email}
-Temporary Password: ${tempPassword}
+${tUser('admin.inviteLoginUrl', { url: appUrl })}
+${tUser('admin.inviteEmail', { email })}
+${tUser('admin.inviteTempPassword', { password: tempPassword })}
 
-You'll be asked to set a new password on your first login.`;
+${tUser('admin.invitePasswordNote')}`;
 
   const handleCopy = async () => {
     try {
