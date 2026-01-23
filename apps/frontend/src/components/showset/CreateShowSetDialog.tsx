@@ -65,10 +65,16 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
+function normalizeLanguage(lang: string): LanguageKey {
+  if (lang === 'zh-TW') return 'zh-TW';
+  if (lang.startsWith('zh')) return 'zh';
+  return 'en';
+}
+
 export function CreateShowSetDialog({ open, onClose }: CreateShowSetDialogProps) {
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
-  const currentLang = (i18n.language as LanguageKey) || 'en';
+  const currentLang = normalizeLanguage(i18n.language);
 
   const [isTranslating, setIsTranslating] = useState(false);
   const [overrides, setOverrides] = useState<Record<LanguageKey, boolean>>({
