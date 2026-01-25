@@ -8,14 +8,14 @@ import { TABLE_NAMES, docClient } from '@unisync/db-utils';
 import type { Language, PdfTranslationJob, Note, NoteAttachment } from '@unisync/shared-types';
 
 const region = process.env.AWS_REGION ?? 'ap-east-1';
-// Textract is not available in all regions (notably ap-east-1/Hong Kong).
-// Use a supported region for Textract while keeping other services local.
-const textractRegion = process.env.TEXTRACT_REGION ?? 'us-east-1';
+// AI services (Textract, Comprehend, Translate) are not available in ap-east-1.
+// Use us-east-1 for all AI services while keeping S3/DynamoDB in the local region.
+const aiServicesRegion = process.env.AI_SERVICES_REGION ?? 'us-east-1';
 const ATTACHMENTS_BUCKET = process.env.ATTACHMENTS_BUCKET!;
 
-const textractClient = new TextractClient({ region: textractRegion });
-const comprehendClient = new ComprehendClient({ region });
-const translateClient = new TranslateClient({ region });
+const textractClient = new TextractClient({ region: aiServicesRegion });
+const comprehendClient = new ComprehendClient({ region: aiServicesRegion });
+const translateClient = new TranslateClient({ region: aiServicesRegion });
 const s3Client = new S3Client({ region });
 
 // Map detected language codes to our language codes
