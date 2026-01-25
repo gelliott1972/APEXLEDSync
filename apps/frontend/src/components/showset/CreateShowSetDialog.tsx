@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
@@ -281,7 +282,7 @@ export function CreateShowSetDialog({ open, onClose }: CreateShowSetDialogProps)
     );
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
       <div
         className="bg-background rounded-lg shadow-lg w-full max-w-md max-h-[85vh] overflow-y-auto"
@@ -357,6 +358,7 @@ export function CreateShowSetDialog({ open, onClose }: CreateShowSetDialogProps)
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
