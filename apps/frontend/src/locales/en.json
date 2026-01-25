@@ -141,7 +141,9 @@
     "selectUpstreamStages": "Select which upstream stages need revision:",
     "revisionNoteRequired": "Describe what needs to be changed:",
     "revisionNotePlaceholder": "Explain the issues found that require upstream changes...",
-    "upstreamRevisionWarning": "This will set {{stages}} to revision required"
+    "upstreamRevisionWarning": "This will set {{stages}} to revision required",
+    "attachmentOptional": "Attachment (optional)",
+    "uploadingAttachment": "Uploading attachment..."
   },
   "admin": {
     "title": "Administration",

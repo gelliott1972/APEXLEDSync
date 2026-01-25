@@ -104,8 +104,21 @@ export const showSetsApi = {
       body: JSON.stringify({ stagesToReset }),
     }),
 
-  requestUpstreamRevision: (id: string, input: { targetStages: StageName[]; currentStage: StageName; revisionNote: string; revisionNoteLang: 'en' | 'zh' | 'zh-TW' }) =>
-    request<{ message: string; stagesToReset: StageName[] }>(`/showsets/${id}/request-revision`, {
+  requestUpstreamRevision: (id: string, input: {
+    targetStages: StageName[];
+    currentStage: StageName;
+    revisionNote: string;
+    revisionNoteLang: 'en' | 'zh' | 'zh-TW';
+    attachment?: { fileName: string; mimeType: string; fileSize: number };
+  }) =>
+    request<{
+      message: string;
+      stagesToReset: StageName[];
+      noteId: string;
+      uploadUrl?: string;
+      attachmentId?: string;
+      s3Key?: string;
+    }>(`/showsets/${id}/request-revision`, {
       method: 'POST',
       body: JSON.stringify(input),
     }),

@@ -104,6 +104,8 @@ export class TranslationStack extends cdk.Stack {
       environment: {
         NOTES_TABLE: props.notesTable.tableName,
         ATTACHMENTS_BUCKET: props.attachmentsBucket?.bucketName ?? '',
+        // Textract is not available in ap-east-1, use us-east-1 for text extraction
+        TEXTRACT_REGION: 'us-east-1',
       },
     });
 

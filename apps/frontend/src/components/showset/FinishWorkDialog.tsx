@@ -3,11 +3,12 @@ import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ShowSet, StageName, StageStatus, UserRole } from '@unisync/shared-types';
 import { STAGE_NAMES } from '@unisync/shared-types';
-import { showSetsApi } from '@/lib/api';
+import { showSetsApi, notesApi } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { useSessionStore } from '@/stores/session-store';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -108,6 +109,8 @@ export function FinishWorkDialog({ showSet, open, onClose }: FinishWorkDialogPro
   const [stagesToComplete, setStagesToComplete] = useState<StageName[]>([]);
   const [upstreamStagesToRevise, setUpstreamStagesToRevise] = useState<StageName[]>([]);
   const [revisionNote, setRevisionNote] = useState('');
+  const [revisionAttachment, setRevisionAttachment] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const currentRole = effectiveRole();
@@ -172,12 +175,57 @@ export function FinishWorkDialog({ showSet, open, onClose }: FinishWorkDialogPro
           return;
         }
 
-        await requestRevisionMutation.mutateAsync({
+        // Build request with optional attachment metadata
+        const revisionRequest: {
+          targetStages: StageName[];
+          currentStage: StageName;
+          revisionNote: string;
+          revisionNoteLang: 'en' | 'zh' | 'zh-TW';
+          attachment?: { fileName: string; mimeType: string; fileSize: number };
+        } = {
           targetStages: upstreamStagesToRevise,
           currentStage: earliestWorkingStage,
           revisionNote: revisionNote.trim(),
           revisionNoteLang: currentLang,
-        });
+        };
+
+        // Include attachment metadata if file selected
+        if (revisionAttachment) {
+          revisionRequest.attachment = {
+            fileName: revisionAttachment.name,
+            mimeType: revisionAttachment.type,
+            fileSize: revisionAttachment.size,
+          };
+        }
+
+        const result = await requestRevisionMutation.mutateAsync(revisionRequest);
+
+        // If we got upload info back, upload the file to S3 and confirm
+        if (revisionAttachment && result.uploadUrl && result.attachmentId && result.s3Key) {
+          setUploadProgress(t('sessions.uploadingAttachment'));
+
+          // Upload to S3
+          const uploadResponse = await fetch(result.uploadUrl, {
+            method: 'PUT',
+            body: revisionAttachment,
+            headers: {
+              'Content-Type': revisionAttachment.type,
+            },
+          });
+
+          if (!uploadResponse.ok) {
+            console.error('Failed to upload attachment to S3');
+            // Continue anyway - the revision was already created
+          } else {
+            // Confirm the upload
+            await notesApi.confirmUpload(result.noteId, result.attachmentId, showSet.showSetId, {
+              fileName: revisionAttachment.name,
+              mimeType: revisionAttachment.type,
+              fileSize: revisionAttachment.size,
+              s3Key: result.s3Key,
+            });
+          }
+        }
       } else {
         // Update stages based on what was selected
         for (const stage of workingStages) {
@@ -214,6 +262,8 @@ export function FinishWorkDialog({ showSet, open, onClose }: FinishWorkDialogPro
       setStagesToComplete([]);
       setUpstreamStagesToRevise([]);
       setRevisionNote('');
+      setRevisionAttachment(null);
+      setUploadProgress('');
       onClose();
     }
   };
@@ -343,6 +393,29 @@ export function FinishWorkDialog({ showSet, open, onClose }: FinishWorkDialogPro
                   placeholder={t('sessions.revisionNotePlaceholder')}
                   rows={3}
                 />
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="revision-attachment" className="text-sm">
+                  {t('sessions.attachmentOptional')}
+                </Label>
+                <Input
+                  id="revision-attachment"
+                  type="file"
+                  accept=".pdf,.png,.jpg,.jpeg,.gif,.webp"
+                  onChange={(e) => setRevisionAttachment(e.target.files?.[0] ?? null)}
+                  className="cursor-pointer"
+                />
+                {revisionAttachment && (
+                  <p className="text-xs text-muted-foreground">
+                    {revisionAttachment.name} ({(revisionAttachment.size / 1024).toFixed(1)} KB)
+                  </p>
+                )}
+                {uploadProgress && (
+                  <p className="text-xs text-blue-600 dark:text-blue-400">
+                    {uploadProgress}
+                  </p>
+                )}
               </div>
             </div>
           )}

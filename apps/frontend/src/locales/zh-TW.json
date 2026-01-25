@@ -141,7 +141,9 @@
     "selectUpstreamStages": "選擇需要修改的上游階段：",
     "revisionNoteRequired": "描述需要更改的內容：",
     "revisionNotePlaceholder": "說明發現的需要上游更改的問題...",
-    "upstreamRevisionWarning": "這將把 {{stages}} 設置為需要修改"
+    "upstreamRevisionWarning": "這將把 {{stages}} 設置為需要修改",
+    "attachmentOptional": "附件（可選）",
+    "uploadingAttachment": "正在上傳附件..."
   },
   "admin": {
     "title": "管理",

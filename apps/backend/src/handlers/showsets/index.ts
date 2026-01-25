@@ -2,6 +2,8 @@ import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { z } from 'zod';
 import { PutCommand, UpdateCommand, DeleteCommand, QueryCommand, GetCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import {
   TABLE_NAMES,
   GSI_NAMES,
@@ -38,7 +40,22 @@ const sqsClient = new SQSClient({
   region: process.env.AWS_REGION ?? 'ap-east-1',
 });
 
+// S3 client for attachment uploads
+const s3Client = new S3Client({
+  region: process.env.AWS_REGION ?? 'ap-east-1',
+});
+
 const TRANSLATION_QUEUE_URL = process.env.TRANSLATION_QUEUE_URL!;
+const ATTACHMENTS_BUCKET = process.env.ATTACHMENTS_BUCKET!;
+
+// Allowed MIME types for revision attachments
+const ALLOWED_MIME_TYPES = [
+  'application/pdf',
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/webp',
+];
 
 // Helper to get all languages except original
 function getTargetLanguages(original: Language): Language[] {
@@ -64,7 +81,7 @@ async function createRevisionNote(
   language: Language,
   userId: string,
   userName: string
-): Promise<void> {
+): Promise<string> {
   const noteId = generateId();
   const timestamp = now();
 
@@ -106,6 +123,8 @@ async function createRevisionNote(
     originalContent: content,
     targetLanguages,
   });
+
+  return noteId;
 }
 
 // Schemas
@@ -197,6 +216,12 @@ const upstreamRevisionSchema = z.object({
   currentStage: z.enum(['screen', 'structure', 'integrated', 'inBim360', 'drawing2d']),
   revisionNote: z.string().min(1, 'Revision note is required'),
   revisionNoteLang: z.enum(['en', 'zh', 'zh-TW']),
+  // Optional attachment metadata for uploading a file with the revision request
+  attachment: z.object({
+    fileName: z.string().min(1).max(255),
+    mimeType: z.string().min(1).max(100),
+    fileSize: z.number().positive().max(50 * 1024 * 1024), // Max 50MB
+  }).optional(),
 });
 
 // Initialize default stages
@@ -1392,7 +1417,12 @@ const requestUpstreamRevision: AuthenticatedHandler = async (event, auth) => {
       });
     }
 
-    const { targetStages, currentStage, revisionNote, revisionNoteLang } = parsed.data;
+    const { targetStages, currentStage, revisionNote, revisionNoteLang, attachment } = parsed.data;
+
+    // Validate attachment MIME type if provided
+    if (attachment && !ALLOWED_MIME_TYPES.includes(attachment.mimeType)) {
+      return validationError(`File type not allowed. Allowed types: ${ALLOWED_MIME_TYPES.join(', ')}`);
+    }
 
     // Validate that all target stages are upstream of current stage
     const currentIdx = STAGE_ORDER.indexOf(currentStage);
@@ -1467,8 +1497,8 @@ const requestUpstreamRevision: AuthenticatedHandler = async (event, auth) => {
       })
     );
 
-    // Create revision note
-    await createRevisionNote(
+    // Create revision note and get its ID
+    const noteId = await createRevisionNote(
       showSetId,
       STAGE_ORDER[earliestTargetIdx], // Use earliest target as the stage for the note
       revisionNote,
@@ -1484,9 +1514,29 @@ const requestUpstreamRevision: AuthenticatedHandler = async (event, auth) => {
       stagesToReset,
     });
 
+    // If attachment was provided, generate presigned upload URL
+    let uploadInfo: { uploadUrl: string; attachmentId: string; s3Key: string } | undefined;
+    if (attachment) {
+      const attachmentId = generateId();
+      const s3Key = `notes/${showSetId}/${noteId}/${attachmentId}/${attachment.fileName}`;
+
+      const command = new PutObjectCommand({
+        Bucket: ATTACHMENTS_BUCKET,
+        Key: s3Key,
+        ContentType: attachment.mimeType,
+        ContentLength: attachment.fileSize,
+      });
+
+      const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 600 });
+
+      uploadInfo = { uploadUrl, attachmentId, s3Key };
+    }
+
     return success({
       message: 'Upstream revision requested successfully',
       stagesToReset,
+      noteId,
+      ...uploadInfo,
     });
   } catch (err) {
     console.error('Error requesting upstream revision:', err);

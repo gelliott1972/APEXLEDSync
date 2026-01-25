@@ -8,9 +8,12 @@ import { TABLE_NAMES, docClient } from '@unisync/db-utils';
 import type { Language, PdfTranslationJob, Note, NoteAttachment } from '@unisync/shared-types';
 
 const region = process.env.AWS_REGION ?? 'ap-east-1';
+// Textract is not available in all regions (notably ap-east-1/Hong Kong).
+// Use a supported region for Textract while keeping other services local.
+const textractRegion = process.env.TEXTRACT_REGION ?? 'us-east-1';
 const ATTACHMENTS_BUCKET = process.env.ATTACHMENTS_BUCKET!;
 
-const textractClient = new TextractClient({ region });
+const textractClient = new TextractClient({ region: textractRegion });
 const comprehendClient = new ComprehendClient({ region });
 const translateClient = new TranslateClient({ region });
 const s3Client = new S3Client({ region });
@@ -155,8 +158,9 @@ export const handler: SQSHandler = async (event: SQSEvent) => {
         extractedText = await extractTextFromPdf(ATTACHMENTS_BUCKET, s3Key);
         console.log(`Extracted ${extractedText.length} characters from PDF`);
       } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
         console.error('Failed to extract text from PDF:', err);
-        // Update attachment with failed status
+        // Update attachment with failed status and actual error details
         await docClient.send(
           new UpdateCommand({
             TableName: TABLE_NAMES.NOTES,
@@ -164,7 +168,7 @@ export const handler: SQSHandler = async (event: SQSEvent) => {
             UpdateExpression: `SET attachments[${attachmentIndex}].pdfTranslationStatus = :status, attachments[${attachmentIndex}].pdfTranslationError = :error`,
             ExpressionAttributeValues: {
               ':status': 'failed',
-              ':error': 'Failed to extract text from PDF',
+              ':error': `Failed to extract text from PDF: ${errorMessage}`,
             },
           })
         );
