@@ -31,7 +31,7 @@ import {
   forbidden,
   internalError,
 } from '../../lib/response.js';
-import { canManageShowSets, isEngineer, isCustomerReviewer, isViewOnly } from '../../lib/auth.js';
+import { canManageShowSets, isEngineer, isCustomerReviewer, isViewOnly, canRequestUpstreamRevision } from '../../lib/auth.js';
 
 // SQS client for translation queue
 const sqsClient = new SQSClient({
@@ -189,6 +189,14 @@ function getDownstreamStages(stage: StageName): StageName[] {
 const linksUpdateSchema = z.object({
   modelUrl: z.string().url().nullable().optional(),
   drawingsUrl: z.string().url().nullable().optional(),
+});
+
+// Schema for upstream revision request
+const upstreamRevisionSchema = z.object({
+  targetStages: z.array(z.enum(['screen', 'structure', 'integrated', 'inBim360', 'drawing2d'])).min(1),
+  currentStage: z.enum(['screen', 'structure', 'integrated', 'inBim360', 'drawing2d']),
+  revisionNote: z.string().min(1, 'Revision note is required'),
+  revisionNoteLang: z.enum(['en', 'zh', 'zh-TW']),
 });
 
 // Initialize default stages
@@ -1362,6 +1370,130 @@ const unlockShowSet: AuthenticatedHandler = async (event, auth) => {
   }
 };
 
+// Request upstream revision - any operator can request revisions to upstream stages
+const requestUpstreamRevision: AuthenticatedHandler = async (event, auth) => {
+  try {
+    const showSetId = event.pathParameters?.id;
+    if (!showSetId) {
+      return validationError('ShowSet ID is required');
+    }
+
+    // Check permission
+    if (!canRequestUpstreamRevision(auth.role)) {
+      return forbidden('View-only users cannot request revisions');
+    }
+
+    const body = JSON.parse(event.body ?? '{}');
+    const parsed = upstreamRevisionSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return validationError('Invalid request body', {
+        details: parsed.error.message,
+      });
+    }
+
+    const { targetStages, currentStage, revisionNote, revisionNoteLang } = parsed.data;
+
+    // Validate that all target stages are upstream of current stage
+    const currentIdx = STAGE_ORDER.indexOf(currentStage);
+    for (const target of targetStages) {
+      const targetIdx = STAGE_ORDER.indexOf(target);
+      if (targetIdx >= currentIdx) {
+        return validationError(`Target stage ${target} must be upstream of current stage ${currentStage}`);
+      }
+    }
+
+    // Get current ShowSet
+    const current = await docClient.send(
+      new GetCommand({
+        TableName: TABLE_NAMES.SHOWSETS,
+        Key: keys.showSet(showSetId),
+      })
+    );
+
+    if (!current.Item) {
+      return notFound('ShowSet');
+    }
+
+    const currentShowSet = current.Item as ShowSet;
+    const timestamp = now();
+
+    // Check if ShowSet is locked
+    if (isShowSetLocked(currentShowSet)) {
+      return forbidden('ShowSet is locked. An admin must unlock it before changes can be made.');
+    }
+
+    // Find the earliest target stage to determine the cascade range
+    const targetIndices = targetStages.map(s => STAGE_ORDER.indexOf(s));
+    const earliestTargetIdx = Math.min(...targetIndices);
+
+    // All stages from earliest target through current stage (exclusive) need to be set to revision_required
+    // This ensures intermediate stages are also marked
+    const stagesToReset: StageName[] = [];
+    for (let i = earliestTargetIdx; i < currentIdx; i++) {
+      stagesToReset.push(STAGE_ORDER[i]);
+    }
+
+    // Build update expression
+    let updateExpression = 'SET #updatedAt = :updatedAt';
+    const expressionAttributeNames: Record<string, string> = {
+      '#updatedAt': 'updatedAt',
+    };
+    const expressionAttributeValues: Record<string, unknown> = {
+      ':updatedAt': timestamp,
+    };
+
+    // Set all stages in the range to revision_required
+    for (const stageName of stagesToReset) {
+      const stageUpdate = {
+        ...currentShowSet.stages[stageName],
+        status: 'revision_required',
+        updatedBy: auth.userId,
+        updatedAt: timestamp,
+      };
+      updateExpression += `, stages.#stage_${stageName} = :stageUpdate_${stageName}`;
+      expressionAttributeNames[`#stage_${stageName}`] = stageName;
+      expressionAttributeValues[`:stageUpdate_${stageName}`] = stageUpdate;
+    }
+
+    // Execute update
+    await docClient.send(
+      new UpdateCommand({
+        TableName: TABLE_NAMES.SHOWSETS,
+        Key: keys.showSet(showSetId),
+        UpdateExpression: updateExpression,
+        ExpressionAttributeNames: expressionAttributeNames,
+        ExpressionAttributeValues: expressionAttributeValues,
+      })
+    );
+
+    // Create revision note
+    await createRevisionNote(
+      showSetId,
+      STAGE_ORDER[earliestTargetIdx], // Use earliest target as the stage for the note
+      revisionNote,
+      revisionNoteLang,
+      auth.userId,
+      auth.name
+    );
+
+    // Log activity
+    await logActivity(showSetId, auth.userId, auth.name, 'upstream_revision_requested', {
+      targetStages,
+      currentStage,
+      stagesToReset,
+    });
+
+    return success({
+      message: 'Upstream revision requested successfully',
+      stagesToReset,
+    });
+  } catch (err) {
+    console.error('Error requesting upstream revision:', err);
+    return internalError();
+  }
+};
+
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
@@ -1392,6 +1524,8 @@ export const handler = async (
       return await wrappedHandler(lockShowSet);
     case 'POST /showsets/{id}/unlock':
       return await wrappedHandler(unlockShowSet);
+    case 'POST /showsets/{id}/request-revision':
+      return await wrappedHandler(requestUpstreamRevision);
     default:
       return validationError('Unknown endpoint');
   }

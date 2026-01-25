@@ -10,6 +10,23 @@ export interface NoteAttachment {
   mimeType: string;
   s3Key: string;
   uploadedAt: string;
+  // PDF text extraction and translation fields
+  extractedText?: string;
+  translatedText?: {
+    en: string;
+    zh: string;
+    'zh-TW': string;
+  };
+  pdfTranslationStatus?: 'pending' | 'complete' | 'failed';
+  pdfTranslationError?: string;
+}
+
+// PDF translation job message
+export interface PdfTranslationJob {
+  noteId: string;
+  attachmentId: string;
+  showSetId: string;
+  s3Key: string;
 }
 
 export interface Note {

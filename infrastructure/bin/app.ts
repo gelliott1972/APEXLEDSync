@@ -27,17 +27,18 @@ const authStack = new AuthStack(app, 'UnisyncAuthStack', {
   description: 'UniSync Cognito authentication',
 });
 
+// Storage stack - S3 bucket for attachments (before translation stack so bucket is available)
+const storageStack = new StorageStack(app, 'UnisyncStorageStack', {
+  env,
+  description: 'UniSync file storage',
+});
+
 // Translation stack - SQS queue and Lambda
 const translationStack = new TranslationStack(app, 'UnisyncTranslationStack', {
   env,
   description: 'UniSync translation service',
   notesTable: databaseStack.notesTable,
-});
-
-// Storage stack - S3 bucket for attachments
-const storageStack = new StorageStack(app, 'UnisyncStorageStack', {
-  env,
-  description: 'UniSync file storage',
+  attachmentsBucket: storageStack.attachmentsBucket,
 });
 
 // API stack - API Gateway and Lambda functions
@@ -52,6 +53,7 @@ const apiStack = new ApiStack(app, 'UnisyncApiStack', {
   userPool: authStack.userPool,
   userPoolClient: authStack.userPoolClient,
   translationQueue: translationStack.translationQueue,
+  pdfTranslationQueue: translationStack.pdfTranslationQueue,
   attachmentsBucket: storageStack.attachmentsBucket,
 });
 

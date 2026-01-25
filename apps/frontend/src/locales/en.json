@@ -130,7 +130,18 @@
     "recallNote": "Describe the issue (optional)",
     "recallNotePlaceholder": "Enter what needs to be fixed...",
     "recallWarning": "This will reset {{stages}} to revision required",
-    "startWorkingOnStage": "Start working on this stage now"
+    "startWorkingOnStage": "Start working on this stage now",
+    "finishOption": "Finish option",
+    "leaveInProgress": "Leave in progress",
+    "leaveInProgressDesc": "Continue working on this later",
+    "markAsComplete": "Mark as complete",
+    "markAsCompleteDesc": "Send to next stage or review",
+    "requestUpstreamRevision": "Request upstream revision",
+    "requestUpstreamRevisionDesc": "Flag earlier stages for changes",
+    "selectUpstreamStages": "Select which upstream stages need revision:",
+    "revisionNoteRequired": "Describe what needs to be changed:",
+    "revisionNotePlaceholder": "Explain the issues found that require upstream changes...",
+    "upstreamRevisionWarning": "This will set {{stages}} to revision required"
   },
   "admin": {
     "title": "Administration",
@@ -198,5 +209,16 @@
     "selectStages": "Select stages to review",
     "decision": "Decision",
     "noteRequired": "A note is required when requesting revision."
+  },
+  "languages": {
+    "en": "English",
+    "zh": "Simplified Chinese",
+    "zh-TW": "Traditional Chinese"
+  },
+  "pdfTranslation": {
+    "viewTranslation": "View translated text",
+    "noTextFound": "No text found in PDF",
+    "extractedText": "Extracted text",
+    "translatedText": "Translated text"
   }
 }

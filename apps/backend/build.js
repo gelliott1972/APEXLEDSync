@@ -11,6 +11,7 @@ const handlers = [
   'activity',
   'translate',
   'translate-api',
+  'pdf-translate',
 ];
 
 async function build() {
@@ -49,6 +50,10 @@ const require = createRequire(import.meta.url);
         '@aws-sdk/client-cognito-identity-provider',
         '@aws-sdk/client-sqs',
         '@aws-sdk/client-translate',
+        '@aws-sdk/client-textract',
+        '@aws-sdk/client-comprehend',
+        '@aws-sdk/client-s3',
+        '@aws-sdk/s3-request-presigner',
       ],
       minify: true,
       sourcemap: true,

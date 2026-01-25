@@ -47,11 +47,17 @@ type FormData = z.infer<typeof schema>;
 
 type LanguageKey = 'en' | 'zh' | 'zh-TW';
 
-const LANGUAGE_CONFIG: Record<LanguageKey, { label: string; field: keyof FormData }> = {
-  en: { label: 'English', field: 'descriptionEn' },
-  zh: { label: '简体中文', field: 'descriptionZh' },
-  'zh-TW': { label: '繁體中文', field: 'descriptionZhTW' },
+const LANGUAGE_CONFIG: Record<LanguageKey, { labelKey: string; field: keyof FormData }> = {
+  en: { labelKey: 'languages.en', field: 'descriptionEn' },
+  zh: { labelKey: 'languages.zh', field: 'descriptionZh' },
+  'zh-TW': { labelKey: 'languages.zh-TW', field: 'descriptionZhTW' },
 };
+
+function normalizeLanguage(lang: string): LanguageKey {
+  if (lang === 'zh-TW') return 'zh-TW';
+  if (lang.startsWith('zh')) return 'zh';
+  return 'en';
+}
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
@@ -73,7 +79,7 @@ export function EditShowSetDialog({ showSet, open, onClose }: EditShowSetDialogP
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
-  const currentLang = (i18n.language as LanguageKey) || 'en';
+  const currentLang = normalizeLanguage(i18n.language);
 
   const [isTranslating, setIsTranslating] = useState(false);
   const [overrides, setOverrides] = useState<Record<LanguageKey, boolean>>({
@@ -303,7 +309,7 @@ export function EditShowSetDialog({ showSet, open, onClose }: EditShowSetDialogP
       <div key={lang} className="space-y-1">
         <div className="flex items-center justify-between">
           <Label htmlFor={config.field} className={cn('text-xs', !isEditable && 'text-muted-foreground')}>
-            {config.label}
+            {t(config.labelKey)}
             {isCurrentLang && <span className="ml-1 text-primary">*</span>}
           </Label>
           {!isCurrentLang && (

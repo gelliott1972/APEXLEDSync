@@ -103,6 +103,12 @@ export const showSetsApi = {
       method: 'POST',
       body: JSON.stringify({ stagesToReset }),
     }),
+
+  requestUpstreamRevision: (id: string, input: { targetStages: StageName[]; currentStage: StageName; revisionNote: string; revisionNoteLang: 'en' | 'zh' | 'zh-TW' }) =>
+    request<{ message: string; stagesToReset: StageName[] }>(`/showsets/${id}/request-revision`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
 };
 
 // Notes API

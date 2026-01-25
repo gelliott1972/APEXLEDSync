@@ -43,10 +43,10 @@ type FormData = z.infer<typeof schema>;
 
 type LanguageKey = 'en' | 'zh' | 'zh-TW';
 
-const LANGUAGE_CONFIG: Record<LanguageKey, { label: string; field: keyof FormData }> = {
-  en: { label: 'English', field: 'descriptionEn' },
-  zh: { label: '简体中文', field: 'descriptionZh' },
-  'zh-TW': { label: '繁體中文', field: 'descriptionZhTW' },
+const LANGUAGE_CONFIG: Record<LanguageKey, { labelKey: string; field: keyof FormData }> = {
+  en: { labelKey: 'languages.en', field: 'descriptionEn' },
+  zh: { labelKey: 'languages.zh', field: 'descriptionZh' },
+  'zh-TW': { labelKey: 'languages.zh-TW', field: 'descriptionZhTW' },
 };
 
 function useDebounce<T>(value: T, delay: number): T {
@@ -231,7 +231,7 @@ export function CreateShowSetDialog({ open, onClose }: CreateShowSetDialogProps)
       <div key={lang} className="space-y-1">
         <div className="flex items-center justify-between">
           <Label htmlFor={config.field} className={cn('text-xs', !isEditable && 'text-muted-foreground')}>
-            {config.label}
+            {t(config.labelKey)}
             {isCurrentLang && <span className="ml-1 text-primary">*</span>}
           </Label>
           {!isCurrentLang && (
@@ -284,7 +284,7 @@ export function CreateShowSetDialog({ open, onClose }: CreateShowSetDialogProps)
   return (
     <div className="fixed inset-0 z-50 bg-black/50">
       <div
-        className="fixed left-1/2 top-[45%] -translate-x-1/2 -translate-y-1/2 bg-background rounded-lg shadow-lg w-full max-w-md max-h-[85vh] overflow-y-auto"
+        className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background rounded-lg shadow-lg w-full max-w-md max-h-[85vh] overflow-y-auto"
       >
         <div className="flex items-center justify-between p-4 border-b">
           <h2 className="text-base font-semibold">{t('showset.createNew')}</h2>

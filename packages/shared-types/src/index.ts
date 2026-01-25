@@ -31,6 +31,7 @@ export type {
   ShowSetUpdateInput,
   StageUpdateInput,
   LinksUpdateInput,
+  UpstreamRevisionRequest,
   ShowSetDDBKeys,
   ShowSetAreaGSI,
 } from './showset.js';
@@ -46,6 +47,7 @@ export type {
   NoteUpdateInput,
   NoteDDBKeys,
   TranslationJob,
+  PdfTranslationJob,
 } from './note.js';
 
 // Activity types

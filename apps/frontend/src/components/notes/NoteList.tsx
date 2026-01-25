@@ -1,11 +1,18 @@
 import { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2, AlertCircle, Filter, AlertTriangle, Paperclip, Download, X, FileText, Image } from 'lucide-react';
+import { Plus, Trash2, AlertCircle, Filter, AlertTriangle, Paperclip, Download, X, FileText, Image, ChevronDown, ChevronRight, Loader2, Languages } from 'lucide-react';
 import type { Note, Language, NoteAttachment } from '@unisync/shared-types';
 import { notesApi } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { Button } from '@/components/ui/button';
+
+// Normalize language to our supported types
+function normalizeLanguage(lang: string): Language {
+  if (lang === 'zh-TW') return 'zh-TW';
+  if (lang.startsWith('zh')) return 'zh';
+  return 'en';
+}
 
 interface NoteListProps {
   showSetId: string;
@@ -27,6 +34,63 @@ function getFileIcon(mimeType: string) {
   return <FileText className="h-3 w-3" />;
 }
 
+// PDF Translation Panel component
+function PdfTranslationPanel({ attachment }: { attachment: NoteAttachment }) {
+  const { t, i18n } = useTranslation();
+  const [isExpanded, setIsExpanded] = useState(false);
+  const currentLang = normalizeLanguage(i18n.language);
+
+  const isPending = attachment.pdfTranslationStatus === 'pending';
+  const isFailed = attachment.pdfTranslationStatus === 'failed';
+  const isComplete = attachment.pdfTranslationStatus === 'complete';
+  const hasTranslation = isComplete && attachment.translatedText;
+
+  if (!attachment.pdfTranslationStatus) return null;
+
+  // Get the translated text for current language
+  const translatedText = hasTranslation
+    ? attachment.translatedText?.[currentLang] || attachment.extractedText || ''
+    : '';
+
+  return (
+    <div className="mt-1 border-t pt-1">
+      <button
+        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground w-full"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        {isPending ? (
+          <>
+            <Loader2 className="h-3 w-3 animate-spin" />
+            <span>{t('notes.translating')}</span>
+          </>
+        ) : isFailed ? (
+          <>
+            <AlertCircle className="h-3 w-3 text-destructive" />
+            <span>{attachment.pdfTranslationError || t('notes.translationFailed')}</span>
+          </>
+        ) : hasTranslation ? (
+          <>
+            {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+            <Languages className="h-3 w-3" />
+            <span>{t('pdfTranslation.viewTranslation')}</span>
+          </>
+        ) : (
+          <>
+            <Languages className="h-3 w-3 text-muted-foreground" />
+            <span>{t('pdfTranslation.noTextFound')}</span>
+          </>
+        )}
+      </button>
+
+      {isExpanded && hasTranslation && (
+        <div className="mt-2 p-2 bg-muted/30 rounded text-xs max-h-40 overflow-y-auto whitespace-pre-wrap">
+          {translatedText}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Attachment item component
 function AttachmentItem({
   attachment,
@@ -41,6 +105,7 @@ function AttachmentItem({
 }) {
   const queryClient = useQueryClient();
   const [isDownloading, setIsDownloading] = useState(false);
+  const isPdf = attachment.mimeType === 'application/pdf';
 
   const deleteMutation = useMutation({
     mutationFn: () => notesApi.deleteAttachment(noteId, attachment.id, showSetId),
@@ -72,36 +137,40 @@ function AttachmentItem({
   };
 
   return (
-    <div className="flex items-center gap-2 px-2 py-1 bg-muted/50 rounded text-xs">
-      {getFileIcon(attachment.mimeType)}
-      <span className="truncate flex-1" title={attachment.fileName}>
-        {attachment.fileName}
-      </span>
-      <span className="text-muted-foreground shrink-0">
-        {formatFileSize(attachment.fileSize)}
-      </span>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-5 w-5"
-        onClick={handleDownload}
-        disabled={isDownloading}
-        title="Download"
-      >
-        <Download className="h-3 w-3" />
-      </Button>
-      {canDelete && (
+    <div className="px-2 py-1 bg-muted/50 rounded text-xs">
+      <div className="flex items-center gap-2">
+        {getFileIcon(attachment.mimeType)}
+        <span className="truncate flex-1" title={attachment.fileName}>
+          {attachment.fileName}
+        </span>
+        <span className="text-muted-foreground shrink-0">
+          {formatFileSize(attachment.fileSize)}
+        </span>
         <Button
           variant="ghost"
           size="icon"
           className="h-5 w-5"
-          onClick={() => deleteMutation.mutate()}
-          disabled={deleteMutation.isPending}
-          title="Delete"
+          onClick={handleDownload}
+          disabled={isDownloading}
+          title="Download"
         >
-          <X className="h-3 w-3" />
+          <Download className="h-3 w-3" />
         </Button>
-      )}
+        {canDelete && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-5 w-5"
+            onClick={() => deleteMutation.mutate()}
+            disabled={deleteMutation.isPending}
+            title="Delete"
+          >
+            <X className="h-3 w-3" />
+          </Button>
+        )}
+      </div>
+      {/* PDF Translation Panel */}
+      {isPdf && <PdfTranslationPanel attachment={attachment} />}
     </div>
   );
 }

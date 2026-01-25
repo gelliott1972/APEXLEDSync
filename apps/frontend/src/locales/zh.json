@@ -130,7 +130,18 @@
     "recallNote": "描述问题（可选）",
     "recallNotePlaceholder": "输入需要修复的内容...",
     "recallWarning": "这将把 {{stages}} 重置为需要修改",
-    "startWorkingOnStage": "立即开始此阶段的工作"
+    "startWorkingOnStage": "立即开始此阶段的工作",
+    "finishOption": "完成选项",
+    "leaveInProgress": "保持进行中",
+    "leaveInProgressDesc": "稍后继续工作",
+    "markAsComplete": "标记为完成",
+    "markAsCompleteDesc": "发送到下一阶段或审核",
+    "requestUpstreamRevision": "请求上游修改",
+    "requestUpstreamRevisionDesc": "标记早期阶段需要更改",
+    "selectUpstreamStages": "选择需要修改的上游阶段：",
+    "revisionNoteRequired": "描述需要更改的内容：",
+    "revisionNotePlaceholder": "说明发现的需要上游更改的问题...",
+    "upstreamRevisionWarning": "这将把 {{stages}} 设置为需要修改"
   },
   "admin": {
     "title": "管理",
@@ -198,5 +209,16 @@
     "selectStages": "选择要审核的阶段",
     "decision": "决定",
     "noteRequired": "请求修改时需要填写备注。"
+  },
+  "languages": {
+    "en": "英文",
+    "zh": "简体中文",
+    "zh-TW": "繁体中文"
+  },
+  "pdfTranslation": {
+    "viewTranslation": "查看翻译文本",
+    "noTextFound": "PDF中未找到文本",
+    "extractedText": "提取的文本",
+    "translatedText": "翻译文本"
   }
 }

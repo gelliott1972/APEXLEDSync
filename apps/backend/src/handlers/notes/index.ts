@@ -11,7 +11,7 @@ import {
   generateId,
   now,
 } from '@unisync/db-utils';
-import type { Note, Language, TranslationJob, NoteAttachment } from '@unisync/shared-types';
+import type { Note, Language, TranslationJob, NoteAttachment, PdfTranslationJob } from '@unisync/shared-types';
 import { withAuth, canDeleteNote, canEditNote, type AuthenticatedHandler } from '../../middleware/authorize.js';
 import {
   success,
@@ -30,6 +30,7 @@ const s3Client = new S3Client({
 });
 
 const TRANSLATION_QUEUE_URL = process.env.TRANSLATION_QUEUE_URL!;
+const PDF_TRANSLATION_QUEUE_URL = process.env.PDF_TRANSLATION_QUEUE_URL;
 const ATTACHMENTS_BUCKET = process.env.ATTACHMENTS_BUCKET!;
 
 // Schemas
@@ -69,6 +70,20 @@ async function queueTranslation(job: TranslationJob) {
   await sqsClient.send(
     new SendMessageCommand({
       QueueUrl: TRANSLATION_QUEUE_URL,
+      MessageBody: JSON.stringify(job),
+    })
+  );
+}
+
+// Queue PDF translation job
+async function queuePdfTranslation(job: PdfTranslationJob) {
+  if (!PDF_TRANSLATION_QUEUE_URL) {
+    console.log('PDF translation queue not configured, skipping');
+    return;
+  }
+  await sqsClient.send(
+    new SendMessageCommand({
+      QueueUrl: PDF_TRANSLATION_QUEUE_URL,
       MessageBody: JSON.stringify(job),
     })
   );
@@ -453,6 +468,7 @@ const confirmUpload: AuthenticatedHandler = async (event, auth) => {
     }
 
     const timestamp = now();
+    const isPdf = mimeType === 'application/pdf';
     const attachment: NoteAttachment = {
       id: attachmentId,
       fileName,
@@ -460,6 +476,8 @@ const confirmUpload: AuthenticatedHandler = async (event, auth) => {
       mimeType,
       s3Key,
       uploadedAt: timestamp,
+      // Set PDF translation status if this is a PDF
+      ...(isPdf && { pdfTranslationStatus: 'pending' as const }),
     };
 
     // Add attachment to note
@@ -475,6 +493,16 @@ const confirmUpload: AuthenticatedHandler = async (event, auth) => {
         },
       })
     );
+
+    // Queue PDF translation job if this is a PDF
+    if (isPdf) {
+      await queuePdfTranslation({
+        noteId,
+        attachmentId,
+        showSetId,
+        s3Key,
+      });
+    }
 
     return success(attachment, 201);
   } catch (err) {

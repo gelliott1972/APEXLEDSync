@@ -141,6 +141,13 @@ export interface LinksUpdateInput {
   drawingsUrl?: string | null;
 }
 
+export interface UpstreamRevisionRequest {
+  targetStages: StageName[];
+  currentStage: StageName;
+  revisionNote: string;
+  revisionNoteLang: 'en' | 'zh' | 'zh-TW';
+}
+
 // DynamoDB key structure
 export interface ShowSetDDBKeys {
   PK: `SHOWSET#${string}`;

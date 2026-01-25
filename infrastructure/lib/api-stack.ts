@@ -22,6 +22,7 @@ interface ApiStackProps extends cdk.StackProps {
   userPool: cognito.UserPool;
   userPoolClient: cognito.UserPoolClient;
   translationQueue: sqs.Queue;
+  pdfTranslationQueue?: sqs.Queue;
   attachmentsBucket: s3.Bucket;
 }
 
@@ -70,6 +71,7 @@ export class ApiStack extends cdk.Stack {
       ACTIVITY_TABLE: props.activityTable.tableName,
       SESSIONS_TABLE: props.sessionsTable.tableName,
       TRANSLATION_QUEUE_URL: props.translationQueue.queueUrl,
+      PDF_TRANSLATION_QUEUE_URL: props.pdfTranslationQueue?.queueUrl ?? '',
       USER_POOL_ID: props.userPool.userPoolId,
       ATTACHMENTS_BUCKET: props.attachmentsBucket.bucketName,
     };
@@ -108,6 +110,9 @@ export class ApiStack extends cdk.Stack {
     // Notes handler
     const notesHandler = createHandler('Notes', 'notes');
     props.translationQueue.grantSendMessages(notesHandler);
+    if (props.pdfTranslationQueue) {
+      props.pdfTranslationQueue.grantSendMessages(notesHandler);
+    }
     props.attachmentsBucket.grantReadWrite(notesHandler);
 
     // Sessions handler
@@ -212,6 +217,9 @@ export class ApiStack extends cdk.Stack {
 
     const unlock = showSetById.addResource('unlock');
     unlock.addMethod('POST', showSetsIntegration, authOptions);
+
+    const requestRevision = showSetById.addResource('request-revision');
+    requestRevision.addMethod('POST', showSetsIntegration, authOptions);
 
     // Notes endpoints
     const showSetNotes = showSetById.addResource('notes');
