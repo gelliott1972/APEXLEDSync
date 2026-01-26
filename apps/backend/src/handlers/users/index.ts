@@ -53,14 +53,14 @@ function generateTempPassword(): string {
 const createUserSchema = z.object({
   email: z.string().email(),
   name: z.string().min(1).max(100),
-  role: z.enum(['admin', 'bim_coordinator', 'engineer', '3d_modeller', '2d_drafter', 'customer_reviewer', 'view_only']),
+  role: z.enum(['admin', 'bim_coordinator', 'engineer', '3d_modeller', '2d_drafter', 'customer_reviewer', 'reviewer', 'view_only']),
   preferredLang: z.enum(['en', 'zh', 'zh-TW']).optional().default('en'),
   skipEmail: z.boolean().optional().default(false), // If true, return temp password for clipboard invite
 });
 
 const updateUserSchema = z.object({
   name: z.string().min(1).max(100).optional(),
-  role: z.enum(['admin', 'bim_coordinator', 'engineer', '3d_modeller', '2d_drafter', 'customer_reviewer', 'view_only']).optional(),
+  role: z.enum(['admin', 'bim_coordinator', 'engineer', '3d_modeller', '2d_drafter', 'customer_reviewer', 'reviewer', 'view_only']).optional(),
   preferredLang: z.enum(['en', 'zh', 'zh-TW']).optional(),
   status: z.enum(['active', 'deactivated']).optional(),
   canEditVersions: z.boolean().optional(),

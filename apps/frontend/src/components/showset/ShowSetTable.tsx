@@ -97,7 +97,7 @@ export function ShowSetTable({ showSets, onSelect, onSelectNotes }: ShowSetTable
 
   const currentRole = effectiveRole();
   const isApprovalOnlyRole = currentRole === 'engineer' || currentRole === 'customer_reviewer';
-  const isViewOnly = currentRole === 'view_only';
+  const isViewOnly = currentRole === 'view_only' || currentRole === 'reviewer';
 
   const getDescription = (showSet: ShowSet) => {
     const lang = i18n.language as 'en' | 'zh' | 'zh-TW';

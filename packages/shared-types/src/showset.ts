@@ -167,6 +167,7 @@ export const STAGE_PERMISSIONS: Record<string, StageName[]> = {
   '3d_modeller': ['screen', 'structure', 'integrated'],
   '2d_drafter': ['drawing2d'],
   customer_reviewer: ['inBim360', 'drawing2d'], // Client review stages only, approval-only role
+  reviewer: [], // Can view and comment only, no stage permissions
   view_only: [], // No permissions to update any stages
 };
 

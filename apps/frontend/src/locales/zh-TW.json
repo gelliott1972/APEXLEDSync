@@ -169,6 +169,7 @@
     "inviteGreeting": "您好 {{name}}，",
     "inviteIntro": "您已被邀請加入 UniSync BIM 協調看板。",
     "inviteLoginUrl": "登入網址：{{url}}",
+    "inviteFallbackUrl": "如果該網站無法訪問，請嘗試：{{fallbackUrl}}",
     "inviteEmail": "電子郵件：{{email}}",
     "inviteTempPassword": "臨時密碼：{{password}}",
     "invitePasswordNote": "首次登入時需要設定新密碼。"
@@ -180,6 +181,7 @@
     "3d_modeller": "3D 建模師",
     "2d_drafter": "2D 製圖員",
     "customer_reviewer": "客戶審核員",
+    "reviewer": "審閱者",
     "view_only": "僅檢視"
   },
   "areas": {

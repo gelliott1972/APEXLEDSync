@@ -169,6 +169,7 @@
     "inviteGreeting": "Hi {{name}},",
     "inviteIntro": "You've been invited to UniSync BIM Coordination Board.",
     "inviteLoginUrl": "Login URL: {{url}}",
+    "inviteFallbackUrl": "If this site is not available, please try: {{fallbackUrl}}",
     "inviteEmail": "Email: {{email}}",
     "inviteTempPassword": "Temporary Password: {{password}}",
     "invitePasswordNote": "You'll be asked to set a new password on your first login."
@@ -180,6 +181,7 @@
     "3d_modeller": "3D Modeller",
     "2d_drafter": "2D Drafter",
     "customer_reviewer": "Customer Reviewer",
+    "reviewer": "Reviewer",
     "view_only": "View Only"
   },
   "areas": {

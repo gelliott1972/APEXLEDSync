@@ -92,7 +92,7 @@ export function canManageUsers(role: UserRole): boolean {
   return role === 'admin';
 }
 
-// Any operator (except view_only) can request upstream revisions
+// Any operator (except view_only and reviewer) can request upstream revisions
 export function canRequestUpstreamRevision(role: UserRole): boolean {
-  return role !== 'view_only';
+  return role !== 'view_only' && role !== 'reviewer';
 }

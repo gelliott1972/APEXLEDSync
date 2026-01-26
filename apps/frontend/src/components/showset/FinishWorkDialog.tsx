@@ -279,8 +279,8 @@ export function FinishWorkDialog({ showSet, open, onClose }: FinishWorkDialogPro
     return STAGE_NAMES.slice(minIdx, currentIdx);
   }, [upstreamStagesToRevise, earliestWorkingStage]);
 
-  // Check if view_only - they shouldn't be able to request revisions
-  const isViewOnly = currentRole === 'view_only';
+  // Check if view_only or reviewer - they shouldn't be able to request revisions
+  const isViewOnly = currentRole === 'view_only' || currentRole === 'reviewer';
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>

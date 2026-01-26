@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'bim_coordinator' | 'engineer' | '3d_modeller' | '2d_drafter' | 'customer_reviewer' | 'view_only';
+export type UserRole = 'admin' | 'bim_coordinator' | 'engineer' | '3d_modeller' | '2d_drafter' | 'customer_reviewer' | 'reviewer' | 'view_only';
 
 export type UserStatus = 'active' | 'deactivated';
 
