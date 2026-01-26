@@ -87,10 +87,10 @@ const STAGES: StageName[] = [
   'drawing2d',
 ];
 
-// Valid statuses per stage based on workflow
+// Valid statuses per stage based on workflow (admin can set any status)
 const STAGE_STATUSES: Record<StageName, StageStatus[]> = {
-  screen: ['not_started', 'in_progress', 'complete', 'on_hold'],
-  structure: ['not_started', 'in_progress', 'complete', 'on_hold'],
+  screen: ['not_started', 'in_progress', 'revision_required', 'complete', 'on_hold'],
+  structure: ['not_started', 'in_progress', 'revision_required', 'complete', 'on_hold'],
   integrated: ['not_started', 'in_progress', 'engineer_review', 'revision_required', 'complete', 'on_hold'],
   inBim360: ['not_started', 'in_progress', 'client_review', 'revision_required', 'complete', 'on_hold'],
   drawing2d: ['not_started', 'in_progress', 'engineer_review', 'client_review', 'revision_required', 'complete', 'on_hold'],
