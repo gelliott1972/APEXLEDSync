@@ -140,7 +140,7 @@ const vmItemSchema = z.object({
 });
 
 const createShowSetSchema = z.object({
-  showSetId: z.string().regex(/^SS-\d{2}[A-Za-z]?-\d{2}$/, 'ShowSet ID must be in format SS-XX-XX or SS-XXY-XX'),
+  showSetId: z.string().regex(/^SS-\d{2}[A-Za-z]*-\d{2}$/, 'ShowSet ID must be in format SS-XX-XX or SS-XXYY-XX'),
   area: z.enum(['311', '312']),
   scene: z.string().regex(/^SC\d{2}$/, 'Scene must be in format SCXX'),
   description: localizedStringSchema,
@@ -148,7 +148,7 @@ const createShowSetSchema = z.object({
 });
 
 const updateShowSetSchema = z.object({
-  showSetId: z.string().regex(/^SS-\d{2}[A-Za-z]?-\d{2}$/, 'ShowSet ID must be in format SS-XX-XX or SS-XXY-XX').optional(),
+  showSetId: z.string().regex(/^SS-\d{2}[A-Za-z]*-\d{2}$/, 'ShowSet ID must be in format SS-XX-XX or SS-XXYY-XX').optional(),
   area: z.enum(['311', '312']).optional(),
   scene: z.string().optional(),
   description: localizedStringSchema.optional(),
