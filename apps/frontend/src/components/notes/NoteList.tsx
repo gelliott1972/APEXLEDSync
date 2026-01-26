@@ -322,8 +322,38 @@ function AddNoteForm({
   onClose: () => void;
 }) {
   const { t, i18n } = useTranslation();
+  const { user } = useAuthStore();
   const queryClient = useQueryClient();
   const [content, setContent] = useState('');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const allowedTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+
+    const validFiles = files.filter(file => {
+      if (!allowedTypes.includes(file.type)) {
+        alert(t('notes.invalidFileType'));
+        return false;
+      }
+      if (file.size > 50 * 1024 * 1024) {
+        alert(t('notes.fileTooLarge'));
+        return false;
+      }
+      return true;
+    });
+
+    setSelectedFiles(prev => [...prev, ...validFiles]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const removeFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
 
   const createMutation = useMutation({
     mutationFn: () =>
@@ -331,12 +361,63 @@ function AddNoteForm({
         content,
         language: i18n.language as Language,
       }),
-    onSuccess: () => {
+    onMutate: async () => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['notes', showSetId] });
+
+      // Snapshot previous notes
+      const previousNotes = queryClient.getQueryData<Note[]>(['notes', showSetId]);
+
+      // Optimistically add the new note
+      const lang = normalizeLanguage(i18n.language);
+      const optimisticNote: Note = {
+        noteId: `temp-${Date.now()}`,
+        showSetId,
+        authorId: user?.userId || '',
+        authorName: user?.name || '',
+        originalLang: lang,
+        content: { en: lang === 'en' ? content : '', zh: lang === 'zh' ? content : '', 'zh-TW': lang === 'zh-TW' ? content : '' },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        translationStatus: 'pending',
+        attachments: [],
+      };
+
+      queryClient.setQueryData<Note[]>(['notes', showSetId], (old) =>
+        [optimisticNote, ...(old || [])]
+      );
+
+      return { previousNotes };
+    },
+    onError: (_err, _variables, context) => {
+      // Rollback on error
+      if (context?.previousNotes) {
+        queryClient.setQueryData(['notes', showSetId], context.previousNotes);
+      }
+    },
+    onSuccess: async (newNote) => {
+      // Upload files if any were selected
+      if (selectedFiles.length > 0 && newNote?.noteId) {
+        setIsUploading(true);
+        try {
+          for (const file of selectedFiles) {
+            await notesApi.uploadFile(newNote.noteId, showSetId, file);
+          }
+        } catch (error) {
+          console.error('File upload failed:', error);
+          alert(t('notes.uploadFailed'));
+        }
+        setIsUploading(false);
+      }
+
       queryClient.invalidateQueries({ queryKey: ['notes', showSetId] });
       setContent('');
+      setSelectedFiles([]);
       onClose();
     },
   });
+
+  const isPending = createMutation.isPending || isUploading;
 
   return (
     <div className="p-3 border rounded-lg space-y-3">
@@ -346,17 +427,74 @@ function AddNoteForm({
         value={content}
         onChange={(e) => setContent(e.target.value)}
       />
-      <div className="flex justify-end gap-2">
-        <Button variant="outline" size="sm" onClick={onClose}>
-          {t('common.cancel')}
-        </Button>
-        <Button
-          size="sm"
-          onClick={() => createMutation.mutate()}
-          disabled={!content.trim() || createMutation.isPending}
-        >
-          {createMutation.isPending ? t('common.loading') : t('common.save')}
-        </Button>
+
+      {/* Selected files display */}
+      {selectedFiles.length > 0 && (
+        <div className="space-y-1">
+          {selectedFiles.map((file, index) => (
+            <div key={index} className="flex items-center gap-2 text-xs bg-muted/50 rounded px-2 py-1">
+              {file.type.startsWith('image/') ? (
+                <Image className="h-3 w-3" />
+              ) : (
+                <FileText className="h-3 w-3" />
+              )}
+              <span className="truncate flex-1">{file.name}</span>
+              <span className="text-muted-foreground">{formatFileSize(file.size)}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-4 w-4 p-0"
+                onClick={() => removeFile(index)}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex items-center justify-between gap-2">
+        {/* File upload button */}
+        <div>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileSelect}
+            accept=".pdf,.png,.jpg,.jpeg,.gif,.webp"
+            className="hidden"
+            multiple
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isPending}
+            title={t('notes.attachFile')}
+          >
+            <Paperclip className="h-4 w-4 mr-1" />
+            {t('notes.attachFile')}
+          </Button>
+        </div>
+
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={onClose} disabled={isPending}>
+            {t('common.cancel')}
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => createMutation.mutate()}
+            disabled={!content.trim() || isPending}
+          >
+            {isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                {isUploading ? t('notes.uploading') : t('common.loading')}
+              </>
+            ) : (
+              t('common.save')
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   );
