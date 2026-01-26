@@ -363,6 +363,8 @@ function EditUserDialog({
                 <SelectItem value="engineer">{t('roles.engineer')}</SelectItem>
                 <SelectItem value="3d_modeller">{t('roles.3d_modeller')}</SelectItem>
                 <SelectItem value="2d_drafter">{t('roles.2d_drafter')}</SelectItem>
+                <SelectItem value="customer_reviewer">{t('roles.customer_reviewer')}</SelectItem>
+                <SelectItem value="view_only">{t('roles.view_only')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -480,6 +482,8 @@ function CreateUserDialog({
                 <SelectItem value="engineer">{t('roles.engineer')}</SelectItem>
                 <SelectItem value="3d_modeller">{t('roles.3d_modeller')}</SelectItem>
                 <SelectItem value="2d_drafter">{t('roles.2d_drafter')}</SelectItem>
+                <SelectItem value="customer_reviewer">{t('roles.customer_reviewer')}</SelectItem>
+                <SelectItem value="view_only">{t('roles.view_only')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
