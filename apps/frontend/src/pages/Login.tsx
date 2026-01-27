@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { signIn, confirmSignIn, fetchUserAttributes } from 'aws-amplify/auth';
+import { signIn, signOut, confirmSignIn, fetchUserAttributes, getCurrentUser } from 'aws-amplify/auth';
 import { useAuthStore } from '@/stores/auth-store';
 import type { UserRole, Language } from '@unisync/shared-types';
 import { Button } from '@/components/ui/button';
@@ -31,10 +31,11 @@ type NewPasswordForm = z.infer<typeof newPasswordSchema>;
 export function LoginPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { setUser, clearError } = useAuthStore();
+  const { setUser, clearError, isAuthenticated } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [needsNewPassword, setNeedsNewPassword] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
 
   const loginForm = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
@@ -43,6 +44,28 @@ export function LoginPage() {
   const newPasswordForm = useForm<NewPasswordForm>({
     resolver: zodResolver(newPasswordSchema),
   });
+
+  // Check for existing session on mount
+  useEffect(() => {
+    const checkExistingSession = async () => {
+      try {
+        // If already authenticated in store, redirect
+        if (isAuthenticated) {
+          navigate('/');
+          return;
+        }
+        // Check if there's a Cognito session
+        await getCurrentUser();
+        // If we get here, user has a valid session - sign them out so they can log in fresh
+        await signOut();
+      } catch {
+        // No existing session, that's fine
+      } finally {
+        setCheckingSession(false);
+      }
+    };
+    checkExistingSession();
+  }, [isAuthenticated, navigate]);
 
   const onLoginSubmit = async (data: LoginForm) => {
     setIsLoading(true);
@@ -63,7 +86,28 @@ export function LoginPage() {
       await completeLogin(data.email);
     } catch (err) {
       console.error('Login error:', err);
-      setError(err instanceof Error ? err.message : t('errors.loginFailed'));
+      const errorMessage = err instanceof Error ? err.message : String(err);
+
+      // Handle "already signed in" error by signing out and retrying
+      if (errorMessage.toLowerCase().includes('already') && errorMessage.toLowerCase().includes('sign')) {
+        try {
+          await signOut();
+          // Retry the login
+          const result = await signIn({ username: data.email, password: data.password });
+          if (result.nextStep?.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
+            setNeedsNewPassword(true);
+            setIsLoading(false);
+            return;
+          }
+          await completeLogin(data.email);
+          return;
+        } catch (retryErr) {
+          console.error('Retry login error:', retryErr);
+          setError(retryErr instanceof Error ? retryErr.message : t('errors.loginFailed'));
+        }
+      } else {
+        setError(errorMessage);
+      }
       setIsLoading(false);
     }
   };
@@ -97,6 +141,15 @@ export function LoginPage() {
 
     navigate('/');
   };
+
+  // Show loading while checking for existing session
+  if (checkingSession) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="text-muted-foreground">{t('common.loading')}...</div>
+      </div>
+    );
+  }
 
   if (needsNewPassword) {
     return (
