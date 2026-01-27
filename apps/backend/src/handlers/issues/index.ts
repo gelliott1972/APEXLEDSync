@@ -298,7 +298,7 @@ const createIssue: AuthenticatedHandler = async (event, auth) => {
       });
     }
 
-    const { content, language, parentIssueId, mentions: mentionUserIds, isRevisionNote } = parsed.data;
+    const { content, language, parentIssueId, isRevisionNote } = parsed.data;
     const issueId = generateId();
     const timestamp = now();
 
@@ -699,7 +699,7 @@ const reopenIssue: AuthenticatedHandler = async (event, auth) => {
   }
 };
 
-const getMyIssues: AuthenticatedHandler = async (event, auth) => {
+const getMyIssues: AuthenticatedHandler = async (_event, auth) => {
   try {
     // Query issues created by this user (GSI1)
     const createdByMeResult = await docClient.send(
