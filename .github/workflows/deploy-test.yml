@@ -1,4 +1,4 @@
-name: Build & Test (Feature Branch)
+name: Deploy Preview
 
 on:
   push:
@@ -12,16 +12,36 @@ on:
 permissions:
   id-token: write
   contents: read
+  pull-requests: write
 
 env:
   AWS_REGION: ap-east-1
   NODE_VERSION: '22'
+  BASE_DOMAIN: apex.wrangleit.net
 
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    outputs:
+      branch_name: ${{ steps.branch.outputs.name }}
+      preview_url: ${{ steps.branch.outputs.preview_url }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Get branch name
+        id: branch
+        run: |
+          # Get branch name, handling both push and PR events
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BRANCH="${{ github.head_ref }}"
+          else
+            BRANCH="${{ github.ref_name }}"
+          fi
+          # Convert branch name to valid subdomain (replace / with -)
+          SUBDOMAIN=$(echo "$BRANCH" | sed 's/\//-/g' | tr '[:upper:]' '[:lower:]')
+          echo "name=$SUBDOMAIN" >> $GITHUB_OUTPUT
+          echo "preview_url=https://${SUBDOMAIN}.${{ env.BASE_DOMAIN }}" >> $GITHUB_OUTPUT
+          echo "Branch: $BRANCH -> Subdomain: $SUBDOMAIN"
 
       - uses: pnpm/action-setup@v2
         with:
@@ -43,3 +63,109 @@ jobs:
 
       - name: Run tests
         run: pnpm test
+
+  deploy-preview:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    environment:
+      name: preview
+      url: ${{ needs.build-and-test.outputs.preview_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Get environment config from AWS
+        id: env-config
+        run: |
+          USER_POOL_ID=$(aws cloudformation describe-stacks --stack-name UnisyncAuthStack --query "Stacks[0].Outputs[?OutputKey=='UserPoolId'].OutputValue" --output text)
+          USER_POOL_CLIENT_ID=$(aws cloudformation describe-stacks --stack-name UnisyncAuthStack --query "Stacks[0].Outputs[?OutputKey=='UserPoolClientId'].OutputValue" --output text)
+          API_URL=$(aws cloudformation describe-stacks --stack-name UnisyncApiStack --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" --output text)
+          echo "user_pool_id=$USER_POOL_ID" >> $GITHUB_OUTPUT
+          echo "user_pool_client_id=$USER_POOL_CLIENT_ID" >> $GITHUB_OUTPUT
+          echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+
+      - name: Build shared packages
+        run: pnpm --filter @unisync/shared-types build
+
+      - name: Build frontend
+        working-directory: apps/frontend
+        run: pnpm build
+        env:
+          VITE_API_URL: ${{ steps.env-config.outputs.api_url }}
+          VITE_APP_URL: ${{ needs.build-and-test.outputs.preview_url }}
+          VITE_USER_POOL_ID: ${{ steps.env-config.outputs.user_pool_id }}
+          VITE_USER_POOL_CLIENT_ID: ${{ steps.env-config.outputs.user_pool_client_id }}
+
+      - name: Get preview bucket and distribution
+        id: aws-resources
+        run: |
+          BUCKET=$(aws cloudformation describe-stacks --stack-name UnisyncPreviewStack --query "Stacks[0].Outputs[?ExportName=='unisync-preview-bucket'].OutputValue" --output text)
+          DISTRIBUTION=$(aws cloudformation describe-stacks --stack-name UnisyncPreviewStack --query "Stacks[0].Outputs[?ExportName=='unisync-preview-distribution-id'].OutputValue" --output text)
+          echo "bucket=$BUCKET" >> $GITHUB_OUTPUT
+          echo "distribution=$DISTRIBUTION" >> $GITHUB_OUTPUT
+
+      - name: Deploy to S3 (branch prefix)
+        run: |
+          aws s3 sync apps/frontend/dist s3://${{ steps.aws-resources.outputs.bucket }}/${{ needs.build-and-test.outputs.branch_name }} --delete
+
+      - name: Invalidate CloudFront
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ steps.aws-resources.outputs.distribution }} \
+            --paths "/${{ needs.build-and-test.outputs.branch_name }}/*"
+
+      - name: Comment on PR with preview URL
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const previewUrl = '${{ needs.build-and-test.outputs.preview_url }}';
+            const body = `## Preview Deployment\n\nYour preview is ready at: ${previewUrl}\n\nThis preview will be automatically cleaned up after 30 days of inactivity.`;
+
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' && comment.body.includes('Preview Deployment')
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      - name: Output preview URL
+        run: |
+          echo "::notice::Preview deployed to ${{ needs.build-and-test.outputs.preview_url }}"

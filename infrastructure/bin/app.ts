@@ -7,6 +7,7 @@ import { AppSyncStack } from '../lib/appsync-stack.js';
 import { FrontendStack } from '../lib/frontend-stack.js';
 import { TranslationStack } from '../lib/translation-stack.js';
 import { StorageStack } from '../lib/storage-stack.js';
+import { PreviewStack } from '../lib/preview-stack.js';
 
 const app = new cdk.App();
 
@@ -84,5 +85,17 @@ new FrontendStack(app, 'UnisyncFrontendStack', {
   certificateArn,
   hostedZoneId,
 });
+
+// Preview stack - Branch-based preview deployments (optional)
+// Only create if wildcard certificate is available
+if (domainName && certificateArn && hostedZoneId) {
+  new PreviewStack(app, 'UnisyncPreviewStack', {
+    env,
+    description: 'UniSync preview deployments for feature branches',
+    baseDomain: domainName,
+    wildcardCertificateArn: certificateArn,
+    hostedZoneId,
+  });
+}
 
 app.synth();
