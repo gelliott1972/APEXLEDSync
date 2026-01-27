@@ -51,3 +51,21 @@ export function canDeleteNote(role: UserRole, authorId: string, userId: string):
 export function canEditNote(authorId: string, userId: string): boolean {
   return authorId === userId;
 }
+
+// Issue authorization helpers
+export function canCreateIssue(role: UserRole): boolean {
+  return role !== 'view_only';
+}
+
+export function canEditIssue(authorId: string, userId: string): boolean {
+  return authorId === userId;
+}
+
+export function canDeleteIssue(role: UserRole, authorId: string, userId: string): boolean {
+  return role === 'admin' || authorId === userId;
+}
+
+export function canCloseIssue(role: UserRole, authorId: string, userId: string): boolean {
+  // Creator or Admin can close/reopen
+  return role === 'admin' || authorId === userId;
+}

@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { X, ExternalLink, Pencil, Trash2, ChevronDown, ChevronRight, Circle, CheckCircle2, Pause, Eye, UserCheck, AlertTriangle, Send, Lock, LockOpen } from 'lucide-react';
-import type { ShowSet, StageName, StageStatus, StageUpdateInput, Note } from '@unisync/shared-types';
-import { showSetsApi, notesApi } from '@/lib/api';
+import { X, ExternalLink, Pencil, Trash2, ChevronDown, ChevronRight, Circle, CheckCircle2, Pause, Eye, UserCheck, AlertTriangle, Send, Lock, LockOpen, MessageSquare, Plus } from 'lucide-react';
+import type { ShowSet, StageName, StageStatus, StageUpdateInput, Issue } from '@unisync/shared-types';
+import { showSetsApi, issuesApi } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -41,7 +41,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { NoteList } from '@/components/notes/NoteList';
+import { IssuesModal, IssueItem, CreateIssueForm } from '@/components/issues';
 import { EditShowSetDialog } from './EditShowSetDialog';
 
 // Helper to check if ShowSet is locked (simple flag - admin controls)
@@ -185,7 +185,9 @@ export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: Sho
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [linksExpanded, setLinksExpanded] = useState(false);
   const [stagesExpanded, setStagesExpanded] = useState(!notesOnly);
-  const [notesExpanded, setNotesExpanded] = useState(true);
+  const [issuesExpanded, setIssuesExpanded] = useState(true);
+  const [issuesModalOpen, setIssuesModalOpen] = useState(false);
+  const [isAddingIssue, setIsAddingIssue] = useState(false);
 
   // Revision dialog state
   const [revisionDialogOpen, setRevisionDialogOpen] = useState(false);
@@ -195,14 +197,14 @@ export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: Sho
   // Unlock dialog state
   const [unlockDialogOpen, setUnlockDialogOpen] = useState(false);
 
-  const { data: notes = [] } = useQuery({
-    queryKey: ['notes', showSet.showSetId],
-    queryFn: () => notesApi.list(showSet.showSetId),
+  const { data: issues = [] } = useQuery({
+    queryKey: ['issues', showSet.showSetId],
+    queryFn: () => issuesApi.list(showSet.showSetId),
     enabled: open,
-    // Poll every 3 seconds while any note is pending translation
+    // Poll every 3 seconds while any issue is pending translation
     refetchInterval: (query): number | false => {
-      const data = query.state.data as Note[] | undefined;
-      const hasPendingTranslations = data?.some((n: Note) => n.translationStatus === 'pending');
+      const data = query.state.data as Issue[] | undefined;
+      const hasPendingTranslations = data?.some((i: Issue) => i.translationStatus === 'pending');
       return hasPendingTranslations ? 3000 : false;
     },
   });
@@ -245,9 +247,9 @@ export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: Sho
     },
     onSettled: (_data, _error, variables) => {
       queryClient.invalidateQueries({ queryKey: ['showsets'] });
-      // Also invalidate notes if setting revision_required (creates a note)
+      // Also invalidate issues if setting revision_required (creates an issue)
       if (variables.input.status === 'revision_required') {
-        queryClient.invalidateQueries({ queryKey: ['notes', showSet.showSetId] });
+        queryClient.invalidateQueries({ queryKey: ['issues', showSet.showSetId] });
       }
     },
   });
@@ -608,19 +610,93 @@ export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: Sho
           )}
         </div>
 
-        {/* Notes */}
-        <div className="space-y-1">
-          <button
-            className="flex items-center gap-1 text-sm font-medium w-full text-left"
-            onClick={() => setNotesExpanded(!notesExpanded)}
-          >
-            {notesExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-            {t('notes.title')}
-          </button>
-          {notesExpanded && <NoteList showSetId={showSet.showSetId} notes={notes} />}
+        {/* Issues */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <button
+              className="flex items-center gap-1 text-sm font-medium text-left"
+              onClick={() => setIssuesExpanded(!issuesExpanded)}
+            >
+              {issuesExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              <MessageSquare className="h-4 w-4" />
+              {t('issues.title')}
+              {issues.length > 0 && (
+                <span className="text-xs text-muted-foreground ml-1">
+                  ({issues.filter(i => i.status === 'open').length} {t('issues.open').toLowerCase()})
+                </span>
+              )}
+            </button>
+            {issuesExpanded && (
+              <Button variant="ghost" size="sm" onClick={() => setIssuesModalOpen(true)}>
+                {t('issues.viewAll')}
+              </Button>
+            )}
+          </div>
+
+          {issuesExpanded && (
+            <div className="space-y-2">
+              {/* Add Issue button */}
+              {currentRole !== 'view_only' && !isAddingIssue && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => setIsAddingIssue(true)}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  {t('issues.createIssue')}
+                </Button>
+              )}
+
+              {/* Add Issue form */}
+              {isAddingIssue && (
+                <CreateIssueForm
+                  showSetId={showSet.showSetId}
+                  onClose={() => setIsAddingIssue(false)}
+                />
+              )}
+
+              {/* Recent issues (compact view) */}
+              {issues.length === 0 && !isAddingIssue ? (
+                <p className="text-sm text-muted-foreground text-center py-2">
+                  {t('issues.noIssues')}
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {issues.slice(0, 3).map((issue) => (
+                    <IssueItem
+                      key={issue.issueId}
+                      issue={issue}
+                      showSetId={showSet.showSetId}
+                      onClick={() => setIssuesModalOpen(true)}
+                      isCompact
+                    />
+                  ))}
+                  {issues.length > 3 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full text-muted-foreground"
+                      onClick={() => setIssuesModalOpen(true)}
+                    >
+                      +{issues.length - 3} {t('issues.viewAll').toLowerCase()}
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
       </div>
+
+      {/* Issues Modal */}
+      <IssuesModal
+        open={issuesModalOpen}
+        onClose={() => setIssuesModalOpen(false)}
+        showSetId={showSet.showSetId}
+        showSetName={showSet.showSetId}
+      />
 
       {/* Edit Dialog */}
       <EditShowSetDialog

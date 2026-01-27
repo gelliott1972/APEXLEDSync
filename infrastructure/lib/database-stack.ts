@@ -52,7 +52,7 @@ export class DatabaseStack extends cdk.Stack {
       projectionType: dynamodb.ProjectionType.ALL,
     });
 
-    // Notes Table
+    // Notes/Issues Table
     this.notesTable = new dynamodb.Table(this, 'NotesTable', {
       tableName: 'unisync-notes',
       partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
@@ -62,6 +62,22 @@ export class DatabaseStack extends cdk.Stack {
       pointInTimeRecoverySpecification: {
         pointInTimeRecoveryEnabled: true,
       },
+    });
+
+    // GSI1 for author lookup ("My Issues" - issues created by user)
+    this.notesTable.addGlobalSecondaryIndex({
+      indexName: 'GSI1-author-index',
+      partitionKey: { name: 'GSI1PK', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'GSI1SK', type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
+    // GSI2 for mention lookup (issues user is mentioned in)
+    this.notesTable.addGlobalSecondaryIndex({
+      indexName: 'GSI2-mention-index',
+      partitionKey: { name: 'GSI2PK', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'GSI2SK', type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
     });
 
     // Activity Table

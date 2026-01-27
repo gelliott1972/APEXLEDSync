@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Languages, LogOut, User, LayoutDashboard, Activity, Users, Moon, Sun, Plus, FlaskConical } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { Languages, LogOut, User, LayoutDashboard, Activity, Users, Moon, Sun, Plus, FlaskConical, MessageSquare } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import type { UserRole } from '@unisync/shared-types';
 import { useSessionStore } from '@/stores/session-store';
 import { useUIStore } from '@/stores/ui-store';
+import { issuesApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
+import { IssuesModal } from '@/components/issues';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,6 +41,14 @@ export function Header() {
   const { theme, toggleTheme } = useUIStore();
   const location = useLocation();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [issuesModalOpen, setIssuesModalOpen] = useState(false);
+
+  // Query for open issues count (badge)
+  const { data: myIssues } = useQuery({
+    queryKey: ['my-issues'],
+    queryFn: issuesApi.myIssues,
+    refetchInterval: 60000,
+  });
 
   const changeLanguage = (lang: string) => {
     i18n.changeLanguage(lang);
@@ -148,6 +159,22 @@ export function Header() {
             <span className="sr-only">Toggle theme</span>
           </Button>
 
+          {/* Issues Button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 relative"
+            onClick={() => setIssuesModalOpen(true)}
+            title={t('issues.myIssues')}
+          >
+            <MessageSquare className="h-5 w-5" />
+            {myIssues?.openCount && myIssues.openCount > 0 && (
+              <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 text-[10px] font-medium bg-destructive text-destructive-foreground rounded-full flex items-center justify-center">
+                {myIssues.openCount > 99 ? '99+' : myIssues.openCount}
+              </span>
+            )}
+          </Button>
+
           {/* Language Selector */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -233,6 +260,12 @@ export function Header() {
       <CreateShowSetDialog
         open={createDialogOpen}
         onClose={() => setCreateDialogOpen(false)}
+      />
+
+      {/* Issues Modal */}
+      <IssuesModal
+        open={issuesModalOpen}
+        onClose={() => setIssuesModalOpen(false)}
       />
     </header>
   );

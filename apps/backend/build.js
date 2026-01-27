@@ -6,6 +6,7 @@ const handlers = [
   'auth',
   'showsets',
   'notes',
+  'issues',
   'sessions',
   'users',
   'activity',

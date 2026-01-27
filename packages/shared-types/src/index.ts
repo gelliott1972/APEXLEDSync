@@ -38,7 +38,7 @@ export type {
 
 export { STAGE_PERMISSIONS, STATUS_COLORS, ENGINEER_ALLOWED_STATUSES, CUSTOMER_REVIEWER_ALLOWED_STATUSES, STAGE_VERSION_MAP, STAGE_NAMES } from './showset.js';
 
-// Note types
+// Note types (deprecated - use Issue types)
 export type {
   TranslationStatus,
   NoteAttachment,
@@ -49,6 +49,19 @@ export type {
   TranslationJob,
   PdfTranslationJob,
 } from './note.js';
+
+// Issue types
+export type {
+  IssueStatus,
+  IssueMention,
+  Issue,
+  IssueCreateInput,
+  IssueUpdateInput,
+  IssueDDBKeys,
+  IssueAuthorGSI,
+  IssueMentionGSI,
+  MyIssuesResponse,
+} from './issue.js';
 
 // Activity types
 export type {

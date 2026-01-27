@@ -29,6 +29,9 @@ export const GSI_NAMES = {
   EMAIL_INDEX: 'GSI1-email-index',
   AREA_INDEX: 'GSI1-area-index',
   DATE_INDEX: 'GSI1-date-index',
+  // Issue GSIs (on notes table)
+  ISSUE_AUTHOR_INDEX: 'GSI1-author-index',
+  ISSUE_MENTION_INDEX: 'GSI2-mention-index',
 } as const;
 
 // Initialize DynamoDB client
@@ -117,6 +120,19 @@ export const keys = {
   note: (showSetId: string, timestamp: string, noteId: string) => ({
     PK: `SHOWSET#${showSetId}`,
     SK: `NOTE#${timestamp}#${noteId}`,
+  }),
+  // Issue keys (uses same table as notes)
+  issue: (showSetId: string, timestamp: string, issueId: string) => ({
+    PK: `SHOWSET#${showSetId}`,
+    SK: `ISSUE#${timestamp}#${issueId}`,
+  }),
+  issueAuthor: (userId: string, timestamp: string, issueId: string) => ({
+    GSI1PK: `USER#${userId}`,
+    GSI1SK: `ISSUE#${timestamp}#${issueId}`,
+  }),
+  issueMention: (userId: string, showSetId: string, timestamp: string, issueId: string) => ({
+    GSI2PK: `MENTION#${userId}`,
+    GSI2SK: `ISSUE#${showSetId}#${timestamp}#${issueId}`,
   }),
   activity: (showSetId: string, timestamp: string, activityId: string) => ({
     PK: `SHOWSET#${showSetId}`,

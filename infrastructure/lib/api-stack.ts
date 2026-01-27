@@ -116,6 +116,14 @@ export class ApiStack extends cdk.Stack {
     }
     props.attachmentsBucket.grantReadWrite(notesHandler);
 
+    // Issues handler
+    const issuesHandler = createHandler('Issues', 'issues');
+    props.translationQueue.grantSendMessages(issuesHandler);
+    if (props.pdfTranslationQueue) {
+      props.pdfTranslationQueue.grantSendMessages(issuesHandler);
+    }
+    props.attachmentsBucket.grantReadWrite(issuesHandler);
+
     // Sessions handler
     const sessionsHandler = createHandler('Sessions', 'sessions');
 
@@ -173,6 +181,7 @@ export class ApiStack extends cdk.Stack {
     const authIntegration = new apigateway.LambdaIntegration(authHandler);
     const showSetsIntegration = new apigateway.LambdaIntegration(showSetsHandler);
     const notesIntegration = new apigateway.LambdaIntegration(notesHandler);
+    const issuesIntegration = new apigateway.LambdaIntegration(issuesHandler);
     const sessionsIntegration = new apigateway.LambdaIntegration(sessionsHandler);
     const usersIntegration = new apigateway.LambdaIntegration(usersHandler);
     const activityIntegration = new apigateway.LambdaIntegration(activityHandler);
@@ -243,6 +252,45 @@ export class ApiStack extends cdk.Stack {
 
     const confirmAttachment = attachmentById.addResource('confirm');
     confirmAttachment.addMethod('POST', notesIntegration, authOptions);
+
+    // Issues endpoints
+    const showSetIssues = showSetById.addResource('issues');
+    showSetIssues.addMethod('GET', issuesIntegration, authOptions);
+    showSetIssues.addMethod('POST', issuesIntegration, authOptions);
+
+    const issues = this.api.root.addResource('issues');
+
+    // My issues endpoint
+    const myIssues = issues.addResource('my-issues');
+    myIssues.addMethod('GET', issuesIntegration, authOptions);
+
+    const issueById = issues.addResource('{issueId}');
+    issueById.addMethod('GET', issuesIntegration, authOptions);
+    issueById.addMethod('PUT', issuesIntegration, authOptions);
+    issueById.addMethod('DELETE', issuesIntegration, authOptions);
+
+    // Issue replies
+    const issueReplies = issueById.addResource('replies');
+    issueReplies.addMethod('POST', issuesIntegration, authOptions);
+
+    // Issue status changes
+    const issueClose = issueById.addResource('close');
+    issueClose.addMethod('POST', issuesIntegration, authOptions);
+
+    const issueReopen = issueById.addResource('reopen');
+    issueReopen.addMethod('POST', issuesIntegration, authOptions);
+
+    // Issue attachments
+    const issueAttachments = issueById.addResource('attachments');
+    const issuePresign = issueAttachments.addResource('presign');
+    issuePresign.addMethod('POST', issuesIntegration, authOptions);
+
+    const issueAttachmentById = issueAttachments.addResource('{attachmentId}');
+    issueAttachmentById.addMethod('GET', issuesIntegration, authOptions);
+    issueAttachmentById.addMethod('DELETE', issuesIntegration, authOptions);
+
+    const issueConfirmAttachment = issueAttachmentById.addResource('confirm');
+    issueConfirmAttachment.addMethod('POST', issuesIntegration, authOptions);
 
     // Activity endpoints
     const showSetActivity = showSetById.addResource('activity');

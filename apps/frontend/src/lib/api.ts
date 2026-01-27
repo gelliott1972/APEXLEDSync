@@ -8,6 +8,9 @@ import type {
   Note,
   NoteCreateInput,
   NoteAttachment,
+  Issue,
+  IssueCreateInput,
+  MyIssuesResponse,
   Session,
   SessionStartInput,
   User,
@@ -213,6 +216,124 @@ export const notesApi = {
 
     // 3. Confirm upload
     const attachment = await notesApi.confirmUpload(noteId, attachmentId, showSetId, {
+      fileName: file.name,
+      mimeType: file.type,
+      fileSize: file.size,
+      s3Key,
+    });
+
+    return attachment;
+  },
+};
+
+// Issues API
+export const issuesApi = {
+  list: (showSetId: string) =>
+    request<Issue[]>(`/showsets/${showSetId}/issues`),
+
+  get: (issueId: string, showSetId: string) =>
+    request<{ issue: Issue; replies: Issue[] }>(`/issues/${issueId}?showSetId=${showSetId}`),
+
+  create: (showSetId: string, input: IssueCreateInput) =>
+    request<Issue>(`/showsets/${showSetId}/issues`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+
+  createReply: (issueId: string, showSetId: string, input: IssueCreateInput) =>
+    request<Issue>(`/issues/${issueId}/replies?showSetId=${showSetId}`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+
+  update: (issueId: string, showSetId: string, content: string) =>
+    request<void>(`/issues/${issueId}?showSetId=${showSetId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ content }),
+    }),
+
+  delete: (issueId: string, showSetId: string) =>
+    request<void>(`/issues/${issueId}?showSetId=${showSetId}`, {
+      method: 'DELETE',
+    }),
+
+  close: (issueId: string, showSetId: string) =>
+    request<void>(`/issues/${issueId}/close?showSetId=${showSetId}`, {
+      method: 'POST',
+    }),
+
+  reopen: (issueId: string, showSetId: string) =>
+    request<void>(`/issues/${issueId}/reopen?showSetId=${showSetId}`, {
+      method: 'POST',
+    }),
+
+  myIssues: () =>
+    request<MyIssuesResponse>('/issues/my-issues'),
+
+  // Attachment methods
+  presignUpload: (issueId: string, showSetId: string, file: { fileName: string; mimeType: string; fileSize: number }) =>
+    request<{ uploadUrl: string; attachmentId: string; s3Key: string }>(
+      `/issues/${issueId}/attachments/presign?showSetId=${showSetId}`,
+      {
+        method: 'POST',
+        body: JSON.stringify(file),
+      }
+    ),
+
+  confirmUpload: (
+    issueId: string,
+    attachmentId: string,
+    showSetId: string,
+    details: { fileName: string; mimeType: string; fileSize: number; s3Key: string }
+  ) =>
+    request<NoteAttachment>(
+      `/issues/${issueId}/attachments/${attachmentId}/confirm?showSetId=${showSetId}`,
+      {
+        method: 'POST',
+        body: JSON.stringify(details),
+      }
+    ),
+
+  getAttachment: (issueId: string, attachmentId: string, showSetId: string) =>
+    request<{ downloadUrl: string; attachment: NoteAttachment }>(
+      `/issues/${issueId}/attachments/${attachmentId}?showSetId=${showSetId}`
+    ),
+
+  deleteAttachment: (issueId: string, attachmentId: string, showSetId: string) =>
+    request<void>(
+      `/issues/${issueId}/attachments/${attachmentId}?showSetId=${showSetId}`,
+      { method: 'DELETE' }
+    ),
+
+  // Upload file helper
+  uploadFile: async (
+    issueId: string,
+    showSetId: string,
+    file: File
+  ): Promise<NoteAttachment> => {
+    const { uploadUrl, attachmentId, s3Key } = await issuesApi.presignUpload(
+      issueId,
+      showSetId,
+      {
+        fileName: file.name,
+        mimeType: file.type,
+        fileSize: file.size,
+      }
+    );
+
+    const uploadResponse = await fetch(uploadUrl, {
+      method: 'PUT',
+      body: file,
+      headers: {
+        'Content-Type': file.type,
+      },
+    });
+
+    if (!uploadResponse.ok) {
+      throw new Error('Failed to upload file to S3');
+    }
+
+    const attachment = await issuesApi.confirmUpload(issueId, attachmentId, showSetId, {
       fileName: file.name,
       mimeType: file.type,
       fileSize: file.size,
