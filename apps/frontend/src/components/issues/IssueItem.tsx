@@ -189,9 +189,10 @@ interface IssueItemProps {
   showSetId: string;
   onClick?: () => void;
   isCompact?: boolean;
+  showShowSetId?: boolean; // Show the ShowSet ID in the item (for "My Issues" view)
 }
 
-export function IssueItem({ issue, showSetId, onClick, isCompact = false }: IssueItemProps) {
+export function IssueItem({ issue, showSetId, onClick, isCompact = false, showShowSetId = false }: IssueItemProps) {
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const { user, effectiveRole } = useAuthStore();
@@ -292,6 +293,12 @@ export function IssueItem({ issue, showSetId, onClick, isCompact = false }: Issu
           )}
         </div>
         <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+          {showShowSetId && (
+            <>
+              <span className="font-medium text-foreground">{issue.showSetId}</span>
+              <span>·</span>
+            </>
+          )}
           <span>{time}</span>
           <span>·</span>
           <span>{issue.authorName}</span>
