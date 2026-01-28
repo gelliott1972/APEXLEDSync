@@ -7,7 +7,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import type { UserRole } from '@unisync/shared-types';
 import { useSessionStore } from '@/stores/session-store';
 import { useUIStore } from '@/stores/ui-store';
-import { issuesApi } from '@/lib/api';
+import { issuesApi, profileApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { IssuesModal } from '@/components/issues';
 import {
@@ -50,9 +50,17 @@ export function Header() {
     refetchInterval: 60000,
   });
 
-  const changeLanguage = (lang: string) => {
+  const changeLanguage = async (lang: string) => {
+    // Update UI immediately
     i18n.changeLanguage(lang);
     localStorage.setItem('language', lang);
+
+    // Persist to user profile (don't block UI on this)
+    try {
+      await profileApi.update(undefined, lang);
+    } catch (error) {
+      console.error('Failed to save language preference:', error);
+    }
   };
 
   const handleLogout = async () => {
