@@ -18,7 +18,9 @@
     "success": "Success",
     "optional": "optional",
     "copied": "Copied!",
-    "copyToClipboard": "Copy to Clipboard"
+    "copyToClipboard": "Copy to Clipboard",
+    "view": "View",
+    "download": "Download"
   },
   "nav": {
     "dashboard": "Dashboard",

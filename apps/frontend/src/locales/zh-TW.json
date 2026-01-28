@@ -18,7 +18,9 @@
     "success": "成功",
     "optional": "可選",
     "copied": "已複製！",
-    "copyToClipboard": "複製到剪貼簿"
+    "copyToClipboard": "複製到剪貼簿",
+    "view": "檢視",
+    "download": "下載"
   },
   "nav": {
     "dashboard": "儀表板",

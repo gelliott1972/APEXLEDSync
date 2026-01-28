@@ -17,11 +17,18 @@ import {
   MessageSquare,
   Lock,
   Unlock,
+  Eye,
 } from 'lucide-react';
 import type { Issue, Language, NoteAttachment } from '@unisync/shared-types';
 import { issuesApi } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { IssueStatusBadge } from './IssueStatusBadge';
 
 // Normalize language to our supported types
@@ -44,6 +51,60 @@ function getFileIcon(mimeType: string) {
     return <Image className="h-3 w-3" />;
   }
   return <FileText className="h-3 w-3" />;
+}
+
+// PDF Viewer Modal component
+function PdfViewerModal({
+  open,
+  onClose,
+  pdfUrl,
+  fileName,
+  onDownload,
+}: {
+  open: boolean;
+  onClose: () => void;
+  pdfUrl: string | null;
+  fileName: string;
+  onDownload: () => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-4xl w-[90vw] h-[85vh] flex flex-col p-0">
+        <DialogHeader className="px-4 py-3 border-b flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <DialogTitle className="flex items-center gap-2 text-sm font-medium truncate pr-4">
+              <FileText className="h-4 w-4 shrink-0" />
+              <span className="truncate">{fileName}</span>
+            </DialogTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onDownload}
+              className="shrink-0"
+            >
+              <Download className="h-4 w-4 mr-1" />
+              {t('common.download') || 'Download'}
+            </Button>
+          </div>
+        </DialogHeader>
+        <div className="flex-1 min-h-0">
+          {pdfUrl ? (
+            <iframe
+              src={pdfUrl}
+              className="w-full h-full border-0"
+              title={fileName}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 // PDF Translation Panel component
@@ -114,9 +175,13 @@ function AttachmentItem({
   showSetId: string;
   canDelete: boolean;
 }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const isPdf = attachment.mimeType === 'application/pdf';
+  const isImage = attachment.mimeType.startsWith('image/');
 
   const deleteMutation = useMutation({
     mutationFn: () => issuesApi.deleteAttachment(issueId, attachment.id, showSetId),
@@ -125,13 +190,31 @@ function AttachmentItem({
     },
   });
 
+  const fetchUrl = async () => {
+    const { downloadUrl } = await issuesApi.getAttachment(issueId, attachment.id, showSetId);
+    return downloadUrl;
+  };
+
+  const handleView = async () => {
+    setIsViewerOpen(true);
+    setPdfUrl(null);
+    try {
+      const url = await fetchUrl();
+      setPdfUrl(url);
+    } catch (error) {
+      console.error('Failed to load PDF:', error);
+    }
+  };
+
   const handleDownload = async () => {
     setIsDownloading(true);
     try {
-      const { downloadUrl } = await issuesApi.getAttachment(issueId, attachment.id, showSetId);
-      if (attachment.mimeType === 'application/pdf') {
+      const downloadUrl = pdfUrl || await fetchUrl();
+      if (isImage) {
+        // For images, open in new tab (browsers display them inline)
         window.open(downloadUrl, '_blank');
       } else {
+        // For PDFs and other files, trigger download
         const link = document.createElement('a');
         link.href = downloadUrl;
         link.download = attachment.fileName;
@@ -147,40 +230,64 @@ function AttachmentItem({
   };
 
   return (
-    <div className="px-2 py-1 bg-muted/50 rounded text-xs">
-      <div className="flex items-center gap-2">
-        {getFileIcon(attachment.mimeType)}
-        <span className="truncate flex-1" title={attachment.fileName}>
-          {attachment.fileName}
-        </span>
-        <span className="text-muted-foreground shrink-0">
-          {formatFileSize(attachment.fileSize)}
-        </span>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-5 w-5"
-          onClick={handleDownload}
-          disabled={isDownloading}
-          title="Download"
-        >
-          <Download className="h-3 w-3" />
-        </Button>
-        {canDelete && (
+    <>
+      <div className="px-2 py-1 bg-muted/50 rounded text-xs">
+        <div className="flex items-center gap-2">
+          {getFileIcon(attachment.mimeType)}
+          <span className="truncate flex-1" title={attachment.fileName}>
+            {attachment.fileName}
+          </span>
+          <span className="text-muted-foreground shrink-0">
+            {formatFileSize(attachment.fileSize)}
+          </span>
+          {isPdf && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-5 w-5"
+              onClick={handleView}
+              title={t('common.view') || 'View'}
+            >
+              <Eye className="h-3 w-3" />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"
             className="h-5 w-5"
-            onClick={() => deleteMutation.mutate()}
-            disabled={deleteMutation.isPending}
-            title="Delete"
+            onClick={handleDownload}
+            disabled={isDownloading}
+            title={t('common.download') || 'Download'}
           >
-            <X className="h-3 w-3" />
+            <Download className="h-3 w-3" />
           </Button>
-        )}
+          {canDelete && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-5 w-5"
+              onClick={() => deleteMutation.mutate()}
+              disabled={deleteMutation.isPending}
+              title={t('common.delete')}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          )}
+        </div>
+        {isPdf && <PdfTranslationPanel attachment={attachment} />}
       </div>
-      {isPdf && <PdfTranslationPanel attachment={attachment} />}
-    </div>
+
+      {/* PDF Viewer Modal */}
+      {isPdf && (
+        <PdfViewerModal
+          open={isViewerOpen}
+          onClose={() => setIsViewerOpen(false)}
+          pdfUrl={pdfUrl}
+          fileName={attachment.fileName}
+          onDownload={handleDownload}
+        />
+      )}
+    </>
   );
 }
 
