@@ -64,21 +64,10 @@ export class DatabaseStack extends cdk.Stack {
       },
     });
 
-    // GSI1 for author lookup ("My Issues" - issues created by user)
-    this.notesTable.addGlobalSecondaryIndex({
-      indexName: 'GSI1-author-index',
-      partitionKey: { name: 'GSI1PK', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'GSI1SK', type: dynamodb.AttributeType.STRING },
-      projectionType: dynamodb.ProjectionType.ALL,
-    });
-
-    // GSI2 for mention lookup (issues user is mentioned in)
-    this.notesTable.addGlobalSecondaryIndex({
-      indexName: 'GSI2-mention-index',
-      partitionKey: { name: 'GSI2PK', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'GSI2SK', type: dynamodb.AttributeType.STRING },
-      projectionType: dynamodb.ProjectionType.ALL,
-    });
+    // NOTE: GSI1-author-index and GSI2-mention-index were added manually via AWS CLI
+    // (DynamoDB only allows one GSI creation per update)
+    // Do NOT add them here or CDK will try to recreate them and fail.
+    // See issues_part1.md for details.
 
     // Activity Table
     this.activityTable = new dynamodb.Table(this, 'ActivityTable', {
