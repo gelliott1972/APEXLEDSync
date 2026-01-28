@@ -999,9 +999,10 @@ export const handler = async (
     // Reply (same as create but with parentIssueId)
     case 'POST /issues/{issueId}/replies':
       // Redirect to create with parentIssueId
+      const issueIdForReply = event.pathParameters?.issueId; // Save before overwriting
       event.pathParameters = { id: event.queryStringParameters?.showSetId };
       const body = JSON.parse(event.body ?? '{}');
-      body.parentIssueId = event.pathParameters?.issueId;
+      body.parentIssueId = issueIdForReply;
       event.body = JSON.stringify(body);
       return await wrappedHandler(createIssue);
     // Status changes

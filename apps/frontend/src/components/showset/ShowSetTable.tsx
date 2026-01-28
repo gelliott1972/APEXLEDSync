@@ -12,7 +12,8 @@ import { ApprovalDialog } from './ApprovalDialog';
 interface ShowSetTableProps {
   showSets: ShowSet[];
   onSelect: (id: string) => void;
-  onSelectNotes: (id: string) => void;
+  onOpenIssuesModal: (showSetId: string, showSetName: string) => void;
+  issueCounts?: Record<string, number>;
 }
 
 const STAGES: StageName[] = [
@@ -87,7 +88,7 @@ function StageCell({ status, version, isBeingWorked }: {
   );
 }
 
-export function ShowSetTable({ showSets, onSelect, onSelectNotes }: ShowSetTableProps) {
+export function ShowSetTable({ showSets, onSelect, onOpenIssuesModal, issueCounts = {} }: ShowSetTableProps) {
   const { t, i18n } = useTranslation();
   const { effectiveRole } = useAuthStore();
   const { isWorking, currentShowSetId, workingStages } = useSessionStore();
@@ -179,14 +180,19 @@ export function ShowSetTable({ showSets, onSelect, onSelectNotes }: ShowSetTable
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7 text-muted-foreground hover:text-primary"
+                    className="h-7 w-7 text-muted-foreground hover:text-primary relative"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onSelectNotes(showSet.showSetId);
+                      onOpenIssuesModal(showSet.showSetId, showSet.showSetId);
                     }}
-                    title="View Notes"
+                    title={t('issues.viewIssues')}
                   >
                     <MessageSquare className="h-3 w-3" />
+                    {issueCounts[showSet.showSetId] > 0 && (
+                      <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 text-[10px] font-medium rounded-full bg-destructive text-destructive-foreground flex items-center justify-center">
+                        {issueCounts[showSet.showSetId]}
+                      </span>
+                    )}
                   </Button>
                   {!isViewOnly && (
                     isWorking && currentShowSetId === showSet.showSetId ? (

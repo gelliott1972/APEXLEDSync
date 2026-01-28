@@ -138,7 +138,8 @@
     "fileTooLarge": "檔案太大。最大支援50MB。",
     "showSetIssues": "{{id}} 的問題",
     "backToList": "返回列表",
-    "openIssues": "{{count}} 個未解決"
+    "openIssues": "{{count}} 個未解決",
+    "viewIssues": "檢視問題"
   },
   "sessions": {
     "title": "活動工作階段",

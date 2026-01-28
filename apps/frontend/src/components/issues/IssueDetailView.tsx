@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { issuesApi } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { Button } from '@/components/ui/button';
@@ -11,10 +11,9 @@ import { CreateIssueForm } from './CreateIssueForm';
 interface IssueDetailViewProps {
   issueId: string;
   showSetId: string;
-  onBack: () => void;
 }
 
-export function IssueDetailView({ issueId, showSetId, onBack }: IssueDetailViewProps) {
+export function IssueDetailView({ issueId, showSetId }: IssueDetailViewProps) {
   const { t } = useTranslation();
   const { effectiveRole } = useAuthStore();
   const [isReplying, setIsReplying] = useState(false);
@@ -40,11 +39,6 @@ export function IssueDetailView({ issueId, showSetId, onBack }: IssueDetailViewP
 
   return (
     <div className="space-y-4">
-      <Button variant="ghost" size="sm" onClick={onBack} className="gap-1">
-        <ArrowLeft className="h-4 w-4" />
-        {t('issues.backToList')}
-      </Button>
-
       {/* Main issue */}
       <IssueItem issue={issue} showSetId={showSetId} />
 

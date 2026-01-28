@@ -93,7 +93,6 @@ export function IssuesModal({ open, onClose, showSetId, showSetName }: IssuesMod
         <IssueDetailView
           issueId={selectedIssue.issueId}
           showSetId={selectedIssue.showSetId}
-          onBack={handleBack}
         />
       </div>
     );
@@ -151,22 +150,25 @@ export function IssuesModal({ open, onClose, showSetId, showSetName }: IssuesMod
           }}
           className="flex-1 flex flex-col min-h-0"
         >
-          <TabsList className={showSetId ? 'grid w-full grid-cols-3' : 'grid w-full grid-cols-2'}>
-            {showSetId && (
-              <TabsTrigger value="showset">
-                {t('issues.allIssues')}{' '}
-                {openShowSetCount > 0 && `(${openShowSetCount})`}
+          {/* Hide tabs when viewing a single issue */}
+          {!selectedIssue && (
+            <TabsList className={showSetId ? 'grid w-full grid-cols-3' : 'grid w-full grid-cols-2'}>
+              {showSetId && (
+                <TabsTrigger value="showset">
+                  {t('issues.allIssues')}{' '}
+                  {openShowSetCount > 0 && `(${openShowSetCount})`}
+                </TabsTrigger>
+              )}
+              <TabsTrigger value="created">
+                {t('issues.createdByMe')}{' '}
+                {createdByMeFiltered.length > 0 && `(${createdByMeFiltered.length})`}
               </TabsTrigger>
-            )}
-            <TabsTrigger value="created">
-              {t('issues.createdByMe')}{' '}
-              {createdByMeFiltered.length > 0 && `(${createdByMeFiltered.length})`}
-            </TabsTrigger>
-            <TabsTrigger value="mentioned">
-              {t('issues.mentionedIn')}{' '}
-              {mentionedInFiltered.length > 0 && `(${mentionedInFiltered.length})`}
-            </TabsTrigger>
-          </TabsList>
+              <TabsTrigger value="mentioned">
+                {t('issues.mentionedIn')}{' '}
+                {mentionedInFiltered.length > 0 && `(${mentionedInFiltered.length})`}
+              </TabsTrigger>
+            </TabsList>
+          )}
 
           {showSetId && (
             <TabsContent value="showset" className="flex-1 overflow-y-auto mt-4">

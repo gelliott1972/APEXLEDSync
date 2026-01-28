@@ -6,6 +6,7 @@ BIM model tracking app for LED screen ShowSets through a 6-stage pipeline.
 
 - **Platform**: Windows (use PowerShell/Windows commands, not Unix equivalents like `jq`, `grep`, etc.)
 - **Shell**: Use Windows-compatible commands or cross-platform tools
+- **Screenshots Directory**: `/mnt/e/Grant/Dropbox/scratch/screenshots`
 
 ## Quick Start
 

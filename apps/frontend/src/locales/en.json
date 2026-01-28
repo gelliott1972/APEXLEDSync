@@ -138,7 +138,8 @@
     "fileTooLarge": "File too large. Maximum size is 50MB.",
     "showSetIssues": "Issues for {{id}}",
     "backToList": "Back to list",
-    "openIssues": "{{count}} open"
+    "openIssues": "{{count}} open",
+    "viewIssues": "View Issues"
   },
   "sessions": {
     "title": "Active Sessions",

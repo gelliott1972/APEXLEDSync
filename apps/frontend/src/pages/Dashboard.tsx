@@ -1,8 +1,10 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useQueries } from '@tanstack/react-query';
 import { LayoutGrid, Rows3, Search, X } from 'lucide-react';
 import { useUIStore } from '@/stores/ui-store';
 import { useShowSetsData } from '@/hooks/useShowSetsData';
+import { issuesApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -15,7 +17,8 @@ import {
 import { ShowSetTable } from '@/components/showset/ShowSetTable';
 import { KanbanBoard } from '@/components/showset/KanbanBoard';
 import { ShowSetDetail } from '@/components/showset/ShowSetDetail';
-import type { Area } from '@unisync/shared-types';
+import { IssuesModal } from '@/components/issues/IssuesModal';
+import type { Area, Issue } from '@unisync/shared-types';
 
 export function DashboardPage() {
   const { t } = useTranslation();
@@ -24,6 +27,11 @@ export function DashboardPage() {
   const [notesOnly, setNotesOnly] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Issues modal state
+  const [issuesModalOpen, setIssuesModalOpen] = useState(false);
+  const [issuesModalShowSetId, setIssuesModalShowSetId] = useState<string | undefined>();
+  const [issuesModalShowSetName, setIssuesModalShowSetName] = useState<string | undefined>();
 
   // Focus search input when opened
   useEffect(() => {
@@ -37,9 +45,16 @@ export function DashboardPage() {
     setNotesOnly(false);
   };
 
-  const handleSelectNotes = (id: string) => {
-    setSelectedShowSetId(id);
-    setNotesOnly(true);
+  const handleOpenIssuesModal = (showSetId: string, showSetName: string) => {
+    setIssuesModalShowSetId(showSetId);
+    setIssuesModalShowSetName(showSetName);
+    setIssuesModalOpen(true);
+  };
+
+  const handleCloseIssuesModal = () => {
+    setIssuesModalOpen(false);
+    setIssuesModalShowSetId(undefined);
+    setIssuesModalShowSetName(undefined);
   };
 
   const { showSets, isLoading } = useShowSetsData(
@@ -82,6 +97,32 @@ export function DashboardPage() {
   const selectedShowSet = selectedShowSetId
     ? showSets.find((s) => s.showSetId === selectedShowSetId)
     : null;
+
+  // Query issues for all visible showSets to get open issue counts
+  const showSetIds = useMemo(() => filteredShowSets.map(s => s.showSetId), [filteredShowSets]);
+  const issuesQueries = useQueries({
+    queries: showSetIds.map(showSetId => ({
+      queryKey: ['issues', showSetId],
+      queryFn: () => issuesApi.list(showSetId),
+      staleTime: 60000,
+      refetchInterval: 60000,
+    })),
+  });
+
+  // Compute open issue counts per showSet
+  const issueCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    issuesQueries.forEach((query, index) => {
+      const showSetId = showSetIds[index];
+      if (query.data) {
+        // Count open issues (excluding replies)
+        counts[showSetId] = (query.data as Issue[]).filter(
+          issue => issue.status === 'open' && !issue.parentIssueId
+        ).length;
+      }
+    });
+    return counts;
+  }, [issuesQueries, showSetIds]);
 
   return (
     <div className="flex flex-col h-full space-y-2 overflow-hidden">
@@ -195,7 +236,8 @@ export function DashboardPage() {
           <ShowSetTable
             showSets={filteredShowSets}
             onSelect={handleSelectShowSet}
-            onSelectNotes={handleSelectNotes}
+            onOpenIssuesModal={handleOpenIssuesModal}
+            issueCounts={issueCounts}
           />
         ) : (
           <KanbanBoard
@@ -214,6 +256,14 @@ export function DashboardPage() {
           notesOnly={notesOnly}
         />
       )}
+
+      {/* Issues Modal */}
+      <IssuesModal
+        open={issuesModalOpen}
+        onClose={handleCloseIssuesModal}
+        showSetId={issuesModalShowSetId}
+        showSetName={issuesModalShowSetName}
+      />
     </div>
   );
 }

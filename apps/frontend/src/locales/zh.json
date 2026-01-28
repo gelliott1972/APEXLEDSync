@@ -138,7 +138,8 @@
     "fileTooLarge": "文件太大。最大支持50MB。",
     "showSetIssues": "{{id}} 的问题",
     "backToList": "返回列表",
-    "openIssues": "{{count}} 个未解决"
+    "openIssues": "{{count}} 个未解决",
+    "viewIssues": "查看问题"
   },
   "sessions": {
     "title": "活动会话",
