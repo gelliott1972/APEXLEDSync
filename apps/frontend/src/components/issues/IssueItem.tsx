@@ -18,6 +18,8 @@ import {
   Lock,
   Unlock,
   Eye,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 import type { Issue, Language, NoteAttachment } from '@unisync/shared-types';
 import { issuesApi } from '@/lib/api';
@@ -70,27 +72,60 @@ function FileViewerModal({
   onDownload: () => void;
 }) {
   const { t } = useTranslation();
+  const [isMaximized, setIsMaximized] = useState(false);
   const isImage = mimeType.startsWith('image/');
   const isPdf = mimeType === 'application/pdf';
 
+  // Reset maximized state when modal closes
+  const handleClose = () => {
+    setIsMaximized(false);
+    onClose();
+  };
+
   return (
-    <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl w-[90vw] h-[85vh] flex flex-col p-0">
+    <Dialog open={open} onOpenChange={(open) => !open && handleClose()}>
+      <DialogContent
+        hideCloseButton
+        className={
+          isMaximized
+            ? 'w-screen h-screen max-w-none max-h-none rounded-none flex flex-col p-0'
+            : 'max-w-4xl w-[90vw] h-[85vh] flex flex-col p-0'
+        }
+      >
         <DialogHeader className="px-4 py-3 border-b flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <DialogTitle className="flex items-center gap-2 text-sm font-medium truncate pr-4">
+          <div className="flex items-center justify-between gap-2">
+            <DialogTitle className="flex items-center gap-2 text-sm font-medium truncate min-w-0">
               {isImage ? <Image className="h-4 w-4 shrink-0" /> : <FileText className="h-4 w-4 shrink-0" />}
               <span className="truncate">{fileName}</span>
             </DialogTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onDownload}
-              className="shrink-0"
-            >
-              <Download className="h-4 w-4 mr-1" />
-              {t('common.download') || 'Download'}
-            </Button>
+            <div className="flex items-center gap-1 shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onDownload}
+              >
+                <Download className="h-4 w-4 mr-1" />
+                {t('common.download') || 'Download'}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setIsMaximized(!isMaximized)}
+                title={isMaximized ? 'Minimize' : 'Maximize'}
+              >
+                {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={handleClose}
+                title={t('common.close')}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </DialogHeader>
         <div className="flex-1 min-h-0 overflow-auto">
