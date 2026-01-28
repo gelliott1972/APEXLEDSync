@@ -53,21 +53,25 @@ function getFileIcon(mimeType: string) {
   return <FileText className="h-3 w-3" />;
 }
 
-// PDF Viewer Modal component
-function PdfViewerModal({
+// File Viewer Modal component (PDFs and Images)
+function FileViewerModal({
   open,
   onClose,
-  pdfUrl,
+  fileUrl,
   fileName,
+  mimeType,
   onDownload,
 }: {
   open: boolean;
   onClose: () => void;
-  pdfUrl: string | null;
+  fileUrl: string | null;
   fileName: string;
+  mimeType: string;
   onDownload: () => void;
 }) {
   const { t } = useTranslation();
+  const isImage = mimeType.startsWith('image/');
+  const isPdf = mimeType === 'application/pdf';
 
   return (
     <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
@@ -75,7 +79,7 @@ function PdfViewerModal({
         <DialogHeader className="px-4 py-3 border-b flex-shrink-0">
           <div className="flex items-center justify-between">
             <DialogTitle className="flex items-center gap-2 text-sm font-medium truncate pr-4">
-              <FileText className="h-4 w-4 shrink-0" />
+              {isImage ? <Image className="h-4 w-4 shrink-0" /> : <FileText className="h-4 w-4 shrink-0" />}
               <span className="truncate">{fileName}</span>
             </DialogTitle>
             <Button
@@ -89,13 +93,27 @@ function PdfViewerModal({
             </Button>
           </div>
         </DialogHeader>
-        <div className="flex-1 min-h-0">
-          {pdfUrl ? (
-            <iframe
-              src={pdfUrl}
-              className="w-full h-full border-0"
-              title={fileName}
-            />
+        <div className="flex-1 min-h-0 overflow-auto">
+          {fileUrl ? (
+            isImage ? (
+              <div className="flex items-center justify-center h-full p-4 bg-muted/30">
+                <img
+                  src={fileUrl}
+                  alt={fileName}
+                  className="max-w-full max-h-full object-contain"
+                />
+              </div>
+            ) : isPdf ? (
+              <iframe
+                src={fileUrl}
+                className="w-full h-full border-0"
+                title={fileName}
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                Preview not available
+              </div>
+            )
           ) : (
             <div className="flex items-center justify-center h-full">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -179,9 +197,10 @@ function AttachmentItem({
   const queryClient = useQueryClient();
   const [isDownloading, setIsDownloading] = useState(false);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [fileUrl, setFileUrl] = useState<string | null>(null);
   const isPdf = attachment.mimeType === 'application/pdf';
   const isImage = attachment.mimeType.startsWith('image/');
+  const canView = isPdf || isImage;
 
   const deleteMutation = useMutation({
     mutationFn: () => issuesApi.deleteAttachment(issueId, attachment.id, showSetId),
@@ -197,19 +216,19 @@ function AttachmentItem({
 
   const handleView = async () => {
     setIsViewerOpen(true);
-    setPdfUrl(null);
+    setFileUrl(null);
     try {
       const url = await fetchUrl();
-      setPdfUrl(url);
+      setFileUrl(url);
     } catch (error) {
-      console.error('Failed to load PDF:', error);
+      console.error('Failed to load file:', error);
     }
   };
 
   const handleDownload = async () => {
     setIsDownloading(true);
     try {
-      const downloadUrl = pdfUrl || await fetchUrl();
+      const downloadUrl = fileUrl || await fetchUrl();
       if (isImage) {
         // For images, open in new tab (browsers display them inline)
         window.open(downloadUrl, '_blank');
@@ -240,7 +259,7 @@ function AttachmentItem({
           <span className="text-muted-foreground shrink-0">
             {formatFileSize(attachment.fileSize)}
           </span>
-          {isPdf && (
+          {canView && (
             <Button
               variant="ghost"
               size="icon"
@@ -277,13 +296,14 @@ function AttachmentItem({
         {isPdf && <PdfTranslationPanel attachment={attachment} />}
       </div>
 
-      {/* PDF Viewer Modal */}
-      {isPdf && (
-        <PdfViewerModal
+      {/* File Viewer Modal */}
+      {canView && (
+        <FileViewerModal
           open={isViewerOpen}
           onClose={() => setIsViewerOpen(false)}
-          pdfUrl={pdfUrl}
+          fileUrl={fileUrl}
           fileName={attachment.fileName}
+          mimeType={attachment.mimeType}
           onDownload={handleDownload}
         />
       )}
@@ -392,6 +412,12 @@ export function IssueItem({ issue, showSetId, onClick, isCompact = false, showSh
             {isRevision && <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />}
             <span className="text-sm truncate">{content}</span>
           </div>
+          {attachments.length > 0 && (
+            <span className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+              <Paperclip className="h-3 w-3" />
+              {attachments.length}
+            </span>
+          )}
           {issue.replyCount > 0 && (
             <span className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
               <MessageSquare className="h-3 w-3" />
