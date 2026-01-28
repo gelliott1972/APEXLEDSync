@@ -43,9 +43,12 @@ export default function App() {
   const { restoreSession } = useSessionStore();
   const { i18n } = useTranslation();
 
-  // Apply user's preferred language when they log in
+  // Apply user's preferred language on first login only
+  // localStorage is the source of truth once set (user explicitly changed it)
   useEffect(() => {
-    if (user?.preferredLang) {
+    const savedLang = localStorage.getItem('language');
+    if (!savedLang && user?.preferredLang) {
+      // No local preference set - use profile preference (first login on this device)
       i18n.changeLanguage(user.preferredLang);
       localStorage.setItem('language', user.preferredLang);
     }
