@@ -176,9 +176,9 @@ export function Header() {
             title={t('issues.myIssues')}
           >
             <MessageSquare className="h-5 w-5" />
-            {myIssues?.openCount && myIssues.openCount > 0 && (
+            {myIssues?.unreadCount && myIssues.unreadCount > 0 && (
               <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 text-[10px] font-medium bg-destructive text-destructive-foreground rounded-full flex items-center justify-center">
-                {myIssues.openCount > 99 ? '99+' : myIssues.openCount}
+                {myIssues.unreadCount > 99 ? '99+' : myIssues.unreadCount}
               </span>
             )}
           </Button>

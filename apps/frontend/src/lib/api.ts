@@ -270,6 +270,17 @@ export const issuesApi = {
   myIssues: () =>
     request<MyIssuesResponse>('/issues/my-issues'),
 
+  closedIssues: () =>
+    request<{ closedIssues: Issue[] }>('/issues/closed'),
+
+  allIssues: () =>
+    request<Issue[]>('/issues/all'),
+
+  markRead: (issueId: string, showSetId: string) =>
+    request<void>(`/issues/${issueId}/mark-read?showSetId=${showSetId}`, {
+      method: 'POST',
+    }),
+
   // Attachment methods
   presignUpload: (issueId: string, showSetId: string, file: { fileName: string; mimeType: string; fileSize: number }) =>
     request<{ uploadUrl: string; attachmentId: string; s3Key: string }>(

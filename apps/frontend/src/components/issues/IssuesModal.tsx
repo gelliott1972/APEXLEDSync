@@ -16,7 +16,7 @@ import { IssueListView } from './IssueListView';
 import { IssueDetailView } from './IssueDetailView';
 import { IssueItem } from './IssueItem';
 
-type TabValue = 'showset' | 'created' | 'mentioned';
+type TabValue = 'showset' | 'created' | 'mentioned' | 'closed';
 
 interface IssuesModalProps {
   open: boolean;
@@ -52,6 +52,14 @@ export function IssuesModal({ open, onClose, showSetId, showSetName }: IssuesMod
     queryKey: ['issues', showSetId],
     queryFn: () => issuesApi.list(showSetId!),
     enabled: open && !!showSetId,
+    refetchInterval: 60000,
+  });
+
+  // Closed Issues query
+  const { data: closedIssuesData } = useQuery({
+    queryKey: ['closed-issues'],
+    queryFn: issuesApi.closedIssues,
+    enabled: open,
     refetchInterval: 60000,
   });
 
@@ -112,6 +120,8 @@ export function IssuesModal({ open, onClose, showSetId, showSetName }: IssuesMod
       );
     }
 
+    const unreadIssueIds = myIssues?.unreadIssueIds ?? [];
+
     return (
       <div className="space-y-2">
         {issues.map((issue) => (
@@ -122,6 +132,7 @@ export function IssuesModal({ open, onClose, showSetId, showSetName }: IssuesMod
             onClick={() => handleSelectIssue(issue)}
             isCompact
             showShowSetId={activeTab !== 'showset'} // Show ShowSet ID on created/mentioned tabs
+            isUnread={unreadIssueIds.includes(issue.issueId)}
           />
         ))}
       </div>
@@ -131,6 +142,7 @@ export function IssuesModal({ open, onClose, showSetId, showSetName }: IssuesMod
   const openShowSetCount = showSetIssues.filter(i => i.status === 'open' && !i.parentIssueId).length;
   const createdByMeFiltered = myIssues?.createdByMe?.filter(i => !i.parentIssueId) ?? [];
   const mentionedInFiltered = myIssues?.mentionedIn?.filter(i => !i.parentIssueId) ?? [];
+  const closedIssues = closedIssuesData?.closedIssues ?? [];
 
   return (
     <Dialog open={open} onOpenChange={(open) => !open && handleClose()}>
@@ -152,7 +164,7 @@ export function IssuesModal({ open, onClose, showSetId, showSetName }: IssuesMod
         >
           {/* Hide tabs when viewing a single issue */}
           {!selectedIssue && (
-            <TabsList className={showSetId ? 'grid w-full grid-cols-3' : 'grid w-full grid-cols-2'}>
+            <TabsList className={showSetId ? 'grid w-full grid-cols-4' : 'grid w-full grid-cols-3'}>
               {showSetId && (
                 <TabsTrigger value="showset">
                   {t('issues.allIssues')}{' '}
@@ -166,6 +178,10 @@ export function IssuesModal({ open, onClose, showSetId, showSetName }: IssuesMod
               <TabsTrigger value="mentioned">
                 {t('issues.mentionedIn')}{' '}
                 {mentionedInFiltered.length > 0 && `(${mentionedInFiltered.length})`}
+              </TabsTrigger>
+              <TabsTrigger value="closed">
+                {t('issues.closed')}{' '}
+                {closedIssues.length > 0 && `(${closedIssues.length})`}
               </TabsTrigger>
             </TabsList>
           )}
@@ -186,6 +202,10 @@ export function IssuesModal({ open, onClose, showSetId, showSetName }: IssuesMod
 
           <TabsContent value="mentioned" className="flex-1 overflow-y-auto mt-4">
             {renderIssueList(mentionedInFiltered, t('issues.noIssues'))}
+          </TabsContent>
+
+          <TabsContent value="closed" className="flex-1 overflow-y-auto mt-4">
+            {renderIssueList(closedIssues, t('issues.noClosedIssues'))}
           </TabsContent>
         </Tabs>
       </DialogContent>

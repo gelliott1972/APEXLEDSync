@@ -335,6 +335,10 @@ const createIssue: AuthenticatedHandler = async (event, auth) => {
       translationStatus: 'pending',
       status: 'open',
       mentions: resolvedMentions,
+      // Initialize participant tracking
+      participants: [auth.userId],
+      unreadFor: [],
+      lastReadBy: {},
       attachments: [],
       isRevisionNote: isRevisionNote ?? false,
       createdAt: timestamp,
@@ -373,19 +377,32 @@ const createIssue: AuthenticatedHandler = async (event, auth) => {
       );
     }
 
-    // If this is a reply, increment parent's reply count
+    // If this is a reply, update parent's reply count, participants, and unread tracking
     if (parentIssueId) {
       const parentIssue = await findIssue(showSetId, parentIssueId);
       if (parentIssue) {
+        // Build list of who should be notified (creator + mentions + existing participants) minus the replier
+        const existingParticipants = parentIssue.participants ?? [parentIssue.authorId];
+        const newParticipants = Array.from(new Set([...existingParticipants, auth.userId]));
+
+        const mentionedUserIds = parentIssue.mentions?.map(m => m.userId) ?? [];
+        const unreadFor = Array.from(new Set([
+          parentIssue.authorId, // Issue creator
+          ...mentionedUserIds, // All mentioned users
+          ...existingParticipants, // All participants
+        ])).filter(userId => userId !== auth.userId); // Exclude the replier
+
         await docClient.send(
           new UpdateCommand({
             TableName: TABLE_NAMES.NOTES,
             Key: { PK: parentIssue.PK, SK: parentIssue.SK },
-            UpdateExpression: 'SET replyCount = if_not_exists(replyCount, :zero) + :one, updatedAt = :updatedAt',
+            UpdateExpression: 'SET replyCount = if_not_exists(replyCount, :zero) + :one, updatedAt = :updatedAt, participants = :participants, unreadFor = :unreadFor',
             ExpressionAttributeValues: {
               ':zero': 0,
               ':one': 1,
               ':updatedAt': timestamp,
+              ':participants': newParticipants,
+              ':unreadFor': unreadFor,
             },
           })
         );
@@ -457,6 +474,50 @@ const getIssue: AuthenticatedHandler = async (event) => {
     });
   } catch (err) {
     console.error('Error getting issue:', err);
+    return internalError();
+  }
+};
+
+const markIssueRead: AuthenticatedHandler = async (event, auth) => {
+  try {
+    const issueId = event.pathParameters?.issueId;
+    const showSetId = event.queryStringParameters?.showSetId;
+
+    if (!issueId) {
+      return validationError('Issue ID is required');
+    }
+    if (!showSetId) {
+      return validationError('showSetId query parameter is required');
+    }
+
+    const issue = await findIssue(showSetId, issueId);
+    if (!issue) {
+      return notFound('Issue');
+    }
+
+    const timestamp = now();
+    const currentUnreadFor = issue.unreadFor ?? [];
+    const newUnreadFor = currentUnreadFor.filter(userId => userId !== auth.userId);
+    const currentLastReadBy = issue.lastReadBy ?? {};
+
+    await docClient.send(
+      new UpdateCommand({
+        TableName: TABLE_NAMES.NOTES,
+        Key: { PK: issue.PK, SK: issue.SK },
+        UpdateExpression: 'SET unreadFor = :unreadFor, lastReadBy.#userId = :timestamp',
+        ExpressionAttributeNames: {
+          '#userId': auth.userId,
+        },
+        ExpressionAttributeValues: {
+          ':unreadFor': newUnreadFor,
+          ':timestamp': timestamp,
+        },
+      })
+    );
+
+    return success({ message: 'Issue marked as read' });
+  } catch (err) {
+    console.error('Error marking issue as read:', err);
     return internalError();
   }
 };
@@ -736,17 +797,116 @@ const getMyIssues: AuthenticatedHandler = async (_event, auth) => {
       (item: Record<string, unknown>) => item.itemType !== 'MENTION_INDEX'
     ) as Issue[];
 
+    // Filter to root issues only
+    const rootCreated = createdByMe.filter((i) => !i.parentIssueId);
+    const rootMentioned = mentionedIn.filter((i) => !i.parentIssueId);
+
+    // Combine all root issues
+    const allRootIssues = [...rootCreated, ...rootMentioned];
+
     // Count open issues where user is author or mentioned
-    const openCount = createdByMe.filter((i) => i.status === 'open' && !i.parentIssueId).length +
-      mentionedIn.filter((i) => i.status === 'open' && !i.parentIssueId).length;
+    const openCount = allRootIssues.filter((i) => i.status === 'open').length;
+
+    // Find issues with unread replies for this user
+    const unreadIssues = allRootIssues.filter((i) => {
+      const unreadFor = i.unreadFor ?? [];
+      return unreadFor.includes(auth.userId);
+    });
+
+    const unreadCount = unreadIssues.length;
+    const unreadIssueIds = unreadIssues.map((i) => i.issueId);
 
     return success({
-      createdByMe: createdByMe.filter((i) => !i.parentIssueId), // Only root issues
-      mentionedIn: mentionedIn.filter((i) => !i.parentIssueId),
+      createdByMe: rootCreated,
+      mentionedIn: rootMentioned,
       openCount,
+      unreadCount,
+      unreadIssueIds,
     });
   } catch (err) {
     console.error('Error getting my issues:', err);
+    return internalError();
+  }
+};
+
+const getClosedIssues: AuthenticatedHandler = async (_event, auth) => {
+  try {
+    // Query closed issues created by this user (GSI1)
+    const createdByMeResult = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE_NAMES.NOTES,
+        IndexName: GSI_NAMES.ISSUE_AUTHOR_INDEX,
+        KeyConditionExpression: 'GSI1PK = :pk AND begins_with(GSI1SK, :skPrefix)',
+        FilterExpression: '#status = :closed AND attribute_not_exists(parentIssueId)',
+        ExpressionAttributeNames: {
+          '#status': 'status',
+        },
+        ExpressionAttributeValues: {
+          ':pk': `USER#${auth.userId}`,
+          ':skPrefix': 'ISSUE#',
+          ':closed': 'closed',
+        },
+        ScanIndexForward: false,
+        Limit: 100,
+      })
+    );
+
+    // Query closed issues where user is mentioned (GSI2)
+    const mentionedInResult = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE_NAMES.NOTES,
+        IndexName: GSI_NAMES.ISSUE_MENTION_INDEX,
+        KeyConditionExpression: 'GSI2PK = :pk AND begins_with(GSI2SK, :skPrefix)',
+        FilterExpression: '#status = :closed AND attribute_not_exists(parentIssueId)',
+        ExpressionAttributeNames: {
+          '#status': 'status',
+        },
+        ExpressionAttributeValues: {
+          ':pk': `MENTION#${auth.userId}`,
+          ':skPrefix': 'ISSUE#',
+          ':closed': 'closed',
+        },
+        ScanIndexForward: false,
+        Limit: 100,
+      })
+    );
+
+    const createdByMe = (createdByMeResult.Items ?? []) as Issue[];
+    const mentionedIn = (mentionedInResult.Items ?? []).filter(
+      (item: Record<string, unknown>) => item.itemType !== 'MENTION_INDEX'
+    ) as Issue[];
+
+    // Combine and dedupe
+    const issueMap = new Map<string, Issue>();
+    [...createdByMe, ...mentionedIn].forEach(issue => {
+      issueMap.set(issue.issueId, issue);
+    });
+    const closedIssues = Array.from(issueMap.values()).sort(
+      (a, b) => new Date(b.updatedAt ?? b.createdAt).getTime() - new Date(a.updatedAt ?? a.createdAt).getTime()
+    );
+
+    return success({
+      closedIssues,
+    });
+  } catch (err) {
+    console.error('Error getting closed issues:', err);
+    return internalError();
+  }
+};
+
+const getAllIssues: AuthenticatedHandler = async (_event, auth) => {
+  try {
+    // Only admins can access all issues
+    if (auth.role !== 'admin') {
+      return forbidden('Only admins can view all issues');
+    }
+
+    // This would need to scan all ShowSets or use a different GSI
+    // For now, we'll return an error message suggesting this needs implementation
+    // In production, you might want a separate GSI or scan operation
+    return validationError('Admin all-issues view requires additional GSI setup');
+  } catch (err) {
+    console.error('Error getting all issues:', err);
     return internalError();
   }
 };
@@ -1013,6 +1173,12 @@ export const handler = async (
     // My issues
     case 'GET /issues/my-issues':
       return await wrappedHandler(getMyIssues);
+    case 'GET /issues/closed':
+      return await wrappedHandler(getClosedIssues);
+    case 'GET /issues/all':
+      return await wrappedHandler(getAllIssues);
+    case 'POST /issues/{issueId}/mark-read':
+      return await wrappedHandler(markIssueRead);
     // Attachment endpoints
     case 'POST /issues/{issueId}/attachments/presign':
       return await wrappedHandler(presignUpload);

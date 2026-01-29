@@ -264,6 +264,14 @@ export class ApiStack extends cdk.Stack {
     const myIssues = issues.addResource('my-issues');
     myIssues.addMethod('GET', issuesIntegration, authOptions);
 
+    // Closed issues endpoint
+    const closedIssues = issues.addResource('closed');
+    closedIssues.addMethod('GET', issuesIntegration, authOptions);
+
+    // All issues endpoint (admin only)
+    const allIssues = issues.addResource('all');
+    allIssues.addMethod('GET', issuesIntegration, authOptions);
+
     const issueById = issues.addResource('{issueId}');
     issueById.addMethod('GET', issuesIntegration, authOptions);
     issueById.addMethod('PUT', issuesIntegration, authOptions);
@@ -279,6 +287,10 @@ export class ApiStack extends cdk.Stack {
 
     const issueReopen = issueById.addResource('reopen');
     issueReopen.addMethod('POST', issuesIntegration, authOptions);
+
+    // Mark issue as read
+    const issueMarkRead = issueById.addResource('mark-read');
+    issueMarkRead.addMethod('POST', issuesIntegration, authOptions);
 
     // Issue attachments
     const issueAttachments = issueById.addResource('attachments');

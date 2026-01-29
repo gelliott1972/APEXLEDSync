@@ -18,7 +18,8 @@
       "Bash(git push:*)",
       "Bash(gh run list:*)",
       "WebFetch(domain:github.com)",
-      "Bash(MSYS_NO_PATHCONV=1 aws logs filter-log-events:*)"
+      "Bash(MSYS_NO_PATHCONV=1 aws logs filter-log-events:*)",
+      "Bash(aws dynamodb scan:*)"
     ]
   }
 }

@@ -352,9 +352,10 @@ interface IssueItemProps {
   onClick?: () => void;
   isCompact?: boolean;
   showShowSetId?: boolean; // Show the ShowSet ID in the item (for "My Issues" view)
+  isUnread?: boolean; // Show unread indicator
 }
 
-export function IssueItem({ issue, showSetId, onClick, isCompact = false, showShowSetId = false }: IssueItemProps) {
+export function IssueItem({ issue, showSetId, onClick, isCompact = false, showShowSetId = false, isUnread = false }: IssueItemProps) {
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const { user, effectiveRole } = useAuthStore();
@@ -443,6 +444,7 @@ export function IssueItem({ issue, showSetId, onClick, isCompact = false, showSh
       >
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
+            {isUnread && <span className="h-2 w-2 rounded-full bg-blue-500 shrink-0" title={t('issues.unread')} />}
             <IssueStatusBadge status={issue.status} />
             {isRevision && <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />}
             <span className="text-sm truncate">{content}</span>

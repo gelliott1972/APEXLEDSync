@@ -1,0 +1,129 @@
+﻿{
+    "Items": [
+        {
+            "links": {
+                "M": {
+                    "modelUrl": {
+                        "NULL": true
+                    },
+                    "drawingsUrl": {
+                        "NULL": true
+                    }
+                }
+            },
+            "stages": {
+                "M": {
+                    "awaitingClient": {
+                        "M": {
+                            "status": {
+                                "S": "not_started"
+                            },
+                            "updatedBy": {
+                                "S": "b4325c5e-20f1-7068-3911-d55d5deae610"
+                            },
+                            "updatedAt": {
+                                "S": "2026-01-17T16:33:30.937Z"
+                            }
+                        }
+                    },
+                    "drawing2d": {
+                        "M": {
+                            "status": {
+                                "S": "not_started"
+                            },
+                            "updatedBy": {
+                                "S": "b4325c5e-20f1-7068-3911-d55d5deae610"
+                            },
+                            "updatedAt": {
+                                "S": "2026-01-17T16:33:30.937Z"
+                            }
+                        }
+                    },
+                    "inBim360": {
+                        "M": {
+                            "status": {
+                                "S": "not_started"
+                            },
+                            "updatedBy": {
+                                "S": "b4325c5e-20f1-7068-3911-d55d5deae610"
+                            },
+                            "updatedAt": {
+                                "S": "2026-01-17T16:33:30.937Z"
+                            }
+                        }
+                    },
+                    "integrated": {
+                        "M": {
+                            "status": {
+                                "S": "not_started"
+                            },
+                            "updatedBy": {
+                                "S": "b4325c5e-20f1-7068-3911-d55d5deae610"
+                            },
+                            "updatedAt": {
+                                "S": "2026-01-17T16:33:30.937Z"
+                            }
+                        }
+                    },
+                    "screen": {
+                        "M": {
+                            "status": {
+                                "S": "complete"
+                            },
+                            "updatedBy": {
+                                "S": "b4325c5e-20f1-7068-3911-d55d5deae610"
+                            },
+                            "updatedAt": {
+                                "S": "2026-01-17T17:50:04.597Z"
+                            }
+                        }
+                    },
+                    "structure": {
+                        "M": {
+                            "status": {
+                                "S": "not_started"
+                            },
+                            "updatedBy": {
+                                "S": "b4325c5e-20f1-7068-3911-d55d5deae610"
+                            },
+                            "updatedAt": {
+                                "S": "2026-01-17T16:33:30.937Z"
+                            }
+                        }
+                    }
+                }
+            },
+            "createdAt": {
+                "S": "2026-01-17T16:33:30.920Z"
+            },
+            "GSI1SK": {
+                "S": "SHOWSET#SS-08-03"
+            },
+            "vmList": {
+                "L": []
+            },
+            "GSI1PK": {
+                "S": "AREA#311"
+            },
+            "area": {
+                "S": "311"
+            },
+            "updatedAt": {
+                "S": "2026-01-17T17:50:04.597Z"
+            },
+            "showSetId": {
+                "S": "SS-08-03"
+            },
+            "SK": {
+                "S": "DETAILS"
+            },
+            "PK": {
+                "S": "SHOWSET#SS-08-03"
+            },
+            "description": {
+                "M": {
+                    "en": {
+                        "S": "Macguffin Right LED Display"
+                    },
+                    "zh-TW": {
+                        "S": 

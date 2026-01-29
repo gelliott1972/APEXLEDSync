@@ -4,3 +4,4 @@ export { IssueDetailView } from './IssueDetailView';
 export { IssueItem } from './IssueItem';
 export { CreateIssueForm } from './CreateIssueForm';
 export { IssueStatusBadge } from './IssueStatusBadge';
+export { CloseIssueDialog } from './CloseIssueDialog';

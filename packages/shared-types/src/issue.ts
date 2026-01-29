@@ -29,6 +29,10 @@ export interface Issue {
   closedByName?: string;
   // Mentions
   mentions: IssueMention[];
+  // Participants and read tracking
+  participants: string[]; // UserIds of creator + all repliers
+  unreadFor: string[]; // UserIds who haven't seen latest replies
+  lastReadBy: Record<string, string>; // userId -> ISO timestamp of last read
   // Existing fields from Note
   attachments: NoteAttachment[];
   isRevisionNote?: boolean;
@@ -71,4 +75,6 @@ export interface MyIssuesResponse {
   createdByMe: Issue[];
   mentionedIn: Issue[];
   openCount: number;
+  unreadCount: number; // Count of issues with unread replies for this user
+  unreadIssueIds: string[]; // List of issueIds with unread content
 }
