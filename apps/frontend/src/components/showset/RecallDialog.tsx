@@ -17,17 +17,17 @@ import {
 } from '@/components/ui/dialog';
 
 // Stage order for determining upstream/downstream
-const STAGE_ORDER: StageName[] = ['screen', 'structure', 'integrated', 'inBim360', 'drawing2d'];
+const STAGE_ORDER: StageName[] = ['screen', 'structure', 'inBim360', 'drawing2d'];
 
 // Valid recall targets by review stage
 function getValidRecallTargets(reviewStage: StageName): StageName[] {
   switch (reviewStage) {
-    case 'integrated':
-      // integrated in engineer_review can recall to screen, structure, or integrated
-      return ['screen', 'structure', 'integrated'];
+    case 'structure':
+      // structure in engineer_review can recall to screen or structure
+      return ['screen', 'structure'];
     case 'inBim360':
-      // inBim360 in client_review can recall to screen, structure, integrated, or inBim360
-      return ['screen', 'structure', 'integrated', 'inBim360'];
+      // inBim360 in client_review can recall to screen, structure, or inBim360
+      return ['screen', 'structure', 'inBim360'];
     case 'drawing2d':
       // drawing2d can only recall to itself
       return ['drawing2d'];

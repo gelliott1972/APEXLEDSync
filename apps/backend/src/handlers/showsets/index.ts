@@ -162,9 +162,9 @@ const stageUpdateSchema = z.object({
   revisionNote: z.string().optional(), // Required when setting revision_required, optional for recall
   revisionNoteLang: z.enum(['en', 'zh', 'zh-TW']).optional(),
   // Recall from review: target stage to start working on
-  recallTarget: z.enum(['screen', 'structure', 'integrated', 'inBim360', 'drawing2d']).optional(),
+  recallTarget: z.enum(['screen', 'structure', 'inBim360', 'drawing2d']).optional(),
   // Recall from review: stage that was in review when recall initiated
-  recallFrom: z.enum(['screen', 'structure', 'integrated', 'inBim360', 'drawing2d']).optional(),
+  recallFrom: z.enum(['screen', 'structure', 'inBim360', 'drawing2d']).optional(),
 });
 
 // Schema for manual version update - 3 deliverables
@@ -175,14 +175,13 @@ const versionUpdateSchema = z.object({
   targetVersion: z.number().int().positive().optional(), // If provided, set to this version directly
 });
 
-// Map stage to version type - 3 deliverables (structure + integrated share revitVersion)
+// Map stage to version type - 3 deliverables
 function getVersionTypeForStage(stage: StageName): VersionType | null {
   switch (stage) {
     case 'screen':
       return 'screenVersion';
     case 'structure':
-    case 'integrated':
-      return 'revitVersion';  // Both share the same Revit model version
+      return 'revitVersion';  // Structure includes panel integration
     case 'inBim360':
       return null;            // No version - just uploads to BIM360 cloud
     case 'drawing2d':
@@ -193,10 +192,10 @@ function getVersionTypeForStage(stage: StageName): VersionType | null {
 }
 
 // Stages that support revision_required
-const REVISION_STAGES: StageName[] = ['screen', 'structure', 'integrated', 'inBim360', 'drawing2d'];
+const REVISION_STAGES: StageName[] = ['screen', 'structure', 'inBim360', 'drawing2d'];
 
 // Stage order for cascade resets
-const STAGE_ORDER: StageName[] = ['screen', 'structure', 'integrated', 'inBim360', 'drawing2d'];
+const STAGE_ORDER: StageName[] = ['screen', 'structure', 'inBim360', 'drawing2d'];
 
 // Get downstream stages (stages that come after the given stage)
 function getDownstreamStages(stage: StageName): StageName[] {
@@ -212,8 +211,8 @@ const linksUpdateSchema = z.object({
 
 // Schema for upstream revision request
 const upstreamRevisionSchema = z.object({
-  targetStages: z.array(z.enum(['screen', 'structure', 'integrated', 'inBim360', 'drawing2d'])).min(1),
-  currentStage: z.enum(['screen', 'structure', 'integrated', 'inBim360', 'drawing2d']),
+  targetStages: z.array(z.enum(['screen', 'structure', 'inBim360', 'drawing2d'])).min(1),
+  currentStage: z.enum(['screen', 'structure', 'inBim360', 'drawing2d']),
   revisionNote: z.string().min(1, 'Revision note is required'),
   revisionNoteLang: z.enum(['en', 'zh', 'zh-TW']),
   // Optional attachment metadata for uploading a file with the revision request
@@ -236,10 +235,59 @@ function createDefaultStages(userId: string): ShowSetStages {
   return {
     screen: { ...defaultStage },
     structure: { ...defaultStage },
-    integrated: { ...defaultStage },
     inBim360: { status: 'not_started', updatedBy: userId, updatedAt: timestamp },
     drawing2d: { ...defaultStage },
   };
+}
+
+// Data migration: Merge legacy structure + integrated stages into single structure stage
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function migrateShowSetStages(showSet: any): ShowSet {
+  // If there's no integrated field, no migration needed
+  if (!showSet.stages?.integrated) {
+    return showSet as ShowSet;
+  }
+
+  // Status progression order (most progressed = highest value)
+  const statusOrder: Record<StageStatus, number> = {
+    not_started: 0,
+    on_hold: 1,
+    in_progress: 2,
+    revision_required: 3,
+    engineer_review: 4,
+    client_review: 5,
+    complete: 6,
+  };
+
+  const structure = showSet.stages.structure;
+  const integrated = showSet.stages.integrated;
+
+  // Use the more progressed status
+  const structureOrder = statusOrder[structure.status] ?? 0;
+  const integratedOrder = statusOrder[integrated.status] ?? 0;
+  const moreProgressed = integratedOrder > structureOrder ? integrated : structure;
+
+  // Merge: take all fields from the more progressed stage
+  const mergedStructure = {
+    status: moreProgressed.status,
+    assignedTo: moreProgressed.assignedTo,
+    updatedBy: moreProgressed.updatedBy,
+    updatedAt: moreProgressed.updatedAt,
+    version: moreProgressed.version,
+    revisionNote: moreProgressed.revisionNote,
+    revisionNoteBy: moreProgressed.revisionNoteBy,
+    revisionNoteAt: moreProgressed.revisionNoteAt,
+  };
+
+  // Return migrated ShowSet (remove integrated field)
+  const { integrated: _removed, ...otherStages } = showSet.stages;
+  return {
+    ...showSet,
+    stages: {
+      ...otherStages,
+      structure: mergedStructure,
+    },
+  } as ShowSet;
 }
 
 // Log activity helper
@@ -291,7 +339,7 @@ const listShowSets: AuthenticatedHandler = async (event) => {
           },
         })
       );
-      items = (result.Items ?? []) as ShowSet[];
+      items = (result.Items ?? []).map(migrateShowSetStages);
     } else {
       // Scan all showsets (filter by PK prefix)
       const result = await docClient.send(
@@ -303,7 +351,7 @@ const listShowSets: AuthenticatedHandler = async (event) => {
           },
         })
       );
-      items = (result.Items ?? []) as ShowSet[];
+      items = (result.Items ?? []).map(migrateShowSetStages);
     }
 
     return success(items);
@@ -331,7 +379,7 @@ const getShowSet: AuthenticatedHandler = async (event) => {
       return notFound('ShowSet');
     }
 
-    return success(result.Item as ShowSet);
+    return success(migrateShowSetStages(result.Item));
   } catch (err) {
     console.error('Error getting showset:', err);
     return internalError();

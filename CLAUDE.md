@@ -1,6 +1,6 @@
 # UniSync - BIM Coordination Board
 
-BIM model tracking app for LED screen ShowSets through a 6-stage pipeline.
+BIM model tracking app for LED screen ShowSets through a 4-stage pipeline.
 
 ## Environment
 
@@ -44,7 +44,7 @@ Uses SSO profile `AdministratorAccess-726966883566`. All resources prefixed with
 
 ## Data Model
 
-- **ShowSets**: 6-stage pipeline (screen → structure → integrated → inBim360 → awaitingClient → drawing2d)
+- **ShowSets**: 4-stage pipeline (screen → structure → inBim360 → drawing2d)
 - **Areas**: 311 (Attraction Tower), 312 (Marvel Plaza)
 - **Roles**: admin, bim_coordinator, engineer, 3d_modeller, 2d_drafter
 
@@ -54,7 +54,7 @@ Uses SSO profile `AdministratorAccess-726966883566`. All resources prefixed with
 |--------|-------|-----------|----------|-------------|------------|
 | Access Admin page | ✓ | | | | |
 | Create/delete ShowSets | ✓ | | | | |
-| Update Screen/Structure/Integrated | ✓ | | ✓* | ✓ | |
+| Update Screen/Structure | ✓ | | ✓* | ✓ | |
 | Update In BIM360 | ✓ | ✓ | ✓* | | |
 | Update 2D Drawing | ✓ | | ✓* | | ✓ |
 | Manage links | ✓ | ✓ | | | |

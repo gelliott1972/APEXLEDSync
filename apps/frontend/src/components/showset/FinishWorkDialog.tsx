@@ -52,11 +52,10 @@ function getFinishStatus(
   // Worker finishing work - route to appropriate review or complete
   switch (stage) {
     case 'screen':
-    case 'structure':
-      // These stages go directly to complete
+      // Screen goes directly to complete
       return 'complete';
-    case 'integrated':
-      // Integrated goes to engineer review
+    case 'structure':
+      // Structure goes to engineer review (includes panel integration)
       return 'engineer_review';
     case 'inBim360':
       // BIM360 goes to client review

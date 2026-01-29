@@ -14,11 +14,11 @@ interface KanbanBoardProps {
   onSelect: (id: string) => void;
 }
 
-const STAGES: StageName[] = ['screen', 'structure', 'integrated', 'inBim360', 'drawing2d'];
+const STAGES: StageName[] = ['screen', 'structure', 'inBim360', 'drawing2d'];
 
 // Column names include stages + completed
 type ColumnName = StageName | 'completed';
-const COLUMNS: ColumnName[] = ['screen', 'structure', 'integrated', 'inBim360', 'drawing2d', 'completed'];
+const COLUMNS: ColumnName[] = ['screen', 'structure', 'inBim360', 'drawing2d', 'completed'];
 
 // Status display order within each stage
 const STATUS_ORDER: StageStatus[] = ['not_started', 'in_progress', 'engineer_review', 'client_review', 'revision_required', 'complete', 'on_hold'];
@@ -27,8 +27,7 @@ const STATUS_ORDER: StageStatus[] = ['not_started', 'in_progress', 'engineer_rev
 // Note: Only Screen has 'not_started' - other stages start at 'in_progress'
 const COLUMN_STATUSES: Record<ColumnName, StageStatus[]> = {
   screen: ['not_started', 'in_progress', 'complete', 'on_hold'],
-  structure: ['in_progress', 'complete', 'on_hold'],
-  integrated: ['in_progress', 'engineer_review', 'revision_required', 'complete', 'on_hold'],
+  structure: ['in_progress', 'engineer_review', 'revision_required', 'complete', 'on_hold'],
   inBim360: ['in_progress', 'client_review', 'revision_required', 'complete', 'on_hold'],
   drawing2d: ['in_progress', 'engineer_review', 'client_review', 'revision_required', 'complete', 'on_hold'],
   completed: ['complete'],
@@ -37,7 +36,6 @@ const COLUMN_STATUSES: Record<ColumnName, StageStatus[]> = {
 const columnColors: Record<ColumnName, string> = {
   screen: 'border-t-sky-400',
   structure: 'border-t-violet-400',
-  integrated: 'border-t-amber-400',
   inBim360: 'border-t-teal-400',
   drawing2d: 'border-t-rose-400',
   completed: 'border-t-emerald-500',
@@ -64,22 +62,18 @@ function getActiveStages(showSet: ShowSet): StageName[] {
   if (showSet.stages.screen.status !== 'complete') {
     return ['screen'];
   }
-  if (showSet.stages.structure.status !== 'complete') {
+
+  const structureStatus = showSet.stages.structure.status;
+  if (structureStatus !== 'complete' && structureStatus !== 'engineer_review') {
     return ['structure'];
   }
 
-  // Integration - can be parallel with BIM360/2D when in engineer_review
-  const integratedStatus = showSet.stages.integrated.status;
-  if (integratedStatus !== 'complete' && integratedStatus !== 'engineer_review') {
-    return ['integrated'];
-  }
-
-  // At this point, integrated is either in engineer_review or complete
-  // BIM360 and 2D can be active in parallel
+  // At this point, structure is either in engineer_review or complete
+  // Structure (when in engineer_review), BIM360 and 2D can be active in parallel
   const stages: StageName[] = [];
 
-  if (integratedStatus === 'engineer_review') {
-    stages.push('integrated');
+  if (structureStatus === 'engineer_review') {
+    stages.push('structure');
   }
 
   if (showSet.stages.inBim360.status !== 'complete') {

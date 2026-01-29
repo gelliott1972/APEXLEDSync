@@ -19,7 +19,6 @@ interface ShowSetTableProps {
 const STAGES: StageName[] = [
   'screen',
   'structure',
-  'integrated',
   'inBim360',
   'drawing2d',
 ];
@@ -35,8 +34,7 @@ function getVersionForStage(showSet: ShowSet, stage: StageName): number | null {
     case 'screen':
       return showSet.screenVersion ?? 1;
     case 'structure':
-    case 'integrated':
-      // Both share revitVersion with fallback for legacy data
+      // Revit version with fallback for legacy data
       return showSet.revitVersion ?? Math.max(showSet.structureVersion ?? 1, showSet.integratedVersion ?? 1);
     case 'inBim360':
       return null; // No version - just uploads to BIM360 cloud

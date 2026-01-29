@@ -72,14 +72,12 @@
   "stages": {
     "screen": "Screen",
     "structure": "Structure",
-    "integrated": "Integrated",
     "inBim360": "In BIM360",
     "drawing2d": "2D Drawing",
     "completed": "Done",
     "short": {
       "screen": "SCREEN",
       "structure": "STRUCT",
-      "integrated": "INTEG",
       "inBim360": "BIM360",
       "drawing2d": "2D-DWG",
       "completed": "DONE"

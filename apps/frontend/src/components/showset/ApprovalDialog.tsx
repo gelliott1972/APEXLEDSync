@@ -29,7 +29,6 @@ interface ApprovalDialogProps {
 const STAGES_ORDER: StageName[] = [
   'screen',
   'structure',
-  'integrated',
   'inBim360',
   'drawing2d',
 ];

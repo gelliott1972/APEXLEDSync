@@ -56,13 +56,9 @@ function downstreamNeedsRevision(showSet: ShowSet, stage: StageName): boolean {
   switch (stage) {
     case 'screen':
       return showSet.stages.structure.status === 'revision_required' ||
-             showSet.stages.integrated.status === 'revision_required' ||
              showSet.stages.inBim360.status === 'revision_required';
     case 'structure':
-      return showSet.stages.integrated.status === 'revision_required' ||
-             showSet.stages.inBim360.status === 'revision_required';
-    case 'integrated':
-      // If BIM360 or drawing2d needs revision, integrated model may need fixes
+      // If BIM360 or drawing2d needs revision, structure model may need fixes
       return showSet.stages.inBim360.status === 'revision_required' ||
              showSet.stages.drawing2d.status === 'revision_required';
     case 'inBim360':
@@ -83,7 +79,6 @@ interface ShowSetDetailProps {
 const STAGES: StageName[] = [
   'screen',
   'structure',
-  'integrated',
   'inBim360',
   'drawing2d',
 ];
@@ -91,14 +86,13 @@ const STAGES: StageName[] = [
 // Valid statuses per stage based on workflow (admin can set any status)
 const STAGE_STATUSES: Record<StageName, StageStatus[]> = {
   screen: ['not_started', 'in_progress', 'revision_required', 'complete', 'on_hold'],
-  structure: ['not_started', 'in_progress', 'revision_required', 'complete', 'on_hold'],
-  integrated: ['not_started', 'in_progress', 'engineer_review', 'revision_required', 'complete', 'on_hold'],
+  structure: ['not_started', 'in_progress', 'engineer_review', 'revision_required', 'complete', 'on_hold'],
   inBim360: ['not_started', 'in_progress', 'client_review', 'revision_required', 'complete', 'on_hold'],
   drawing2d: ['not_started', 'in_progress', 'engineer_review', 'client_review', 'revision_required', 'complete', 'on_hold'],
 };
 
 // Stage order for unlock dialog
-const STAGE_ORDER: StageName[] = ['screen', 'structure', 'integrated', 'inBim360', 'drawing2d'];
+const STAGE_ORDER: StageName[] = ['screen', 'structure', 'inBim360', 'drawing2d'];
 
 // Unlock Dialog component
 interface UnlockDialogProps {

@@ -33,7 +33,6 @@ enum StageStatus {
 enum StageName {
   screen
   structure
-  integrated
   inBim360
   drawing2d
 }
@@ -52,7 +51,6 @@ type StageInfo {
 type ShowSetStages {
   screen: StageInfo!
   structure: StageInfo!
-  integrated: StageInfo!
   inBim360: StageInfo!
   drawing2d: StageInfo!
 }

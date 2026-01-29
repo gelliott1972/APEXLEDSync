@@ -34,7 +34,6 @@ interface StartWorkDialogProps {
 const STAGES_ORDER: StageName[] = [
   'screen',
   'structure',
-  'integrated',
   'inBim360',
   'drawing2d',
 ];
@@ -62,13 +61,9 @@ function downstreamNeedsRevision(showSet: ShowSet, stage: StageName): boolean {
   switch (stage) {
     case 'screen':
       return showSet.stages.structure.status === 'revision_required' ||
-             showSet.stages.integrated.status === 'revision_required' ||
              showSet.stages.inBim360.status === 'revision_required';
     case 'structure':
-      return showSet.stages.integrated.status === 'revision_required' ||
-             showSet.stages.inBim360.status === 'revision_required';
-    case 'integrated':
-      // If BIM360 or drawing2d needs revision, integrated model may need fixes
+      // If BIM360 or drawing2d needs revision, structure model may need fixes
       return showSet.stages.inBim360.status === 'revision_required' ||
              showSet.stages.drawing2d.status === 'revision_required';
     default:

@@ -5,14 +5,12 @@ export type StageStatus = 'not_started' | 'in_progress' | 'complete' | 'on_hold'
 export type StageName =
   | 'screen'
   | 'structure'
-  | 'integrated'
   | 'inBim360'
   | 'drawing2d';
 
 export const STAGE_NAMES: StageName[] = [
   'screen',
   'structure',
-  'integrated',
   'inBim360',
   'drawing2d',
 ];
@@ -53,7 +51,6 @@ export interface StageInfoSimple {
 export interface ShowSetStages {
   screen: StageInfo;
   structure: StageInfo;
-  integrated: StageInfo;
   inBim360: StageInfoSimple;
   drawing2d: StageInfo;
 }
@@ -69,8 +66,7 @@ export type VersionType = 'screenVersion' | 'revitVersion' | 'drawingVersion';
 // Map stage names to version types (inBim360 has no version)
 export const STAGE_VERSION_MAP: Record<StageName, VersionType | null> = {
   screen: 'screenVersion',
-  structure: 'revitVersion',     // Structure and Integrated share revitVersion
-  integrated: 'revitVersion',    // Structure and Integrated share revitVersion
+  structure: 'revitVersion',     // Structure includes panel integration
   inBim360: null,                // No version - just uploads to BIM360 cloud
   drawing2d: 'drawingVersion',
 };
@@ -161,10 +157,10 @@ export interface ShowSetAreaGSI {
 
 // Permissions by role for stages
 export const STAGE_PERMISSIONS: Record<string, StageName[]> = {
-  admin: ['screen', 'structure', 'integrated', 'inBim360', 'drawing2d'],
+  admin: ['screen', 'structure', 'inBim360', 'drawing2d'],
   bim_coordinator: ['inBim360'],
-  engineer: ['screen', 'structure', 'integrated', 'inBim360', 'drawing2d'], // Can only approve/reject, not work
-  '3d_modeller': ['screen', 'structure', 'integrated'],
+  engineer: ['screen', 'structure', 'inBim360', 'drawing2d'], // Can only approve/reject, not work
+  '3d_modeller': ['screen', 'structure'],
   '2d_drafter': ['drawing2d'],
   customer_reviewer: ['inBim360', 'drawing2d'], // Client review stages only, approval-only role
   reviewer: [], // Can view and comment only, no stage permissions

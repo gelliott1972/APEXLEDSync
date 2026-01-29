@@ -26,7 +26,7 @@ interface RequestUpstreamRevisionDialogProps {
   onSuccess?: () => void;
 }
 
-const STAGE_ORDER: StageName[] = ['screen', 'structure', 'integrated', 'inBim360', 'drawing2d'];
+const STAGE_ORDER: StageName[] = ['screen', 'structure', 'inBim360', 'drawing2d'];
 
 export function RequestUpstreamRevisionDialog({
   showSet,

@@ -72,14 +72,12 @@
   "stages": {
     "screen": "螢幕",
     "structure": "結構",
-    "integrated": "整合",
     "inBim360": "在 BIM360",
     "drawing2d": "2D 圖紙",
     "completed": "完成",
     "short": {
       "screen": "螢幕",
       "structure": "結構",
-      "integrated": "整合",
       "inBim360": "BIM",
       "drawing2d": "2D圖",
       "completed": "完成"
