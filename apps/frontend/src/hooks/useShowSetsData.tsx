@@ -61,6 +61,43 @@ function transformShowSet(data: Record<string, unknown>): ShowSet {
   } as ShowSet;
 }
 
+// Parse ShowSet ID into components for smart sorting
+// Format: SS-{scene}{shaft}-{screen}
+// Example: SS-10BC-02 -> { scene: 10, shaft: 'BC', screen: 02 }
+function parseShowSetId(showSetId: string): { scene: number; shaft: string; screen: number } {
+  const match = showSetId.match(/^SS-(\d+)([A-Za-z]*)-(\d+)$/);
+  if (!match) {
+    // Fallback for invalid format
+    return { scene: 0, shaft: '', screen: 0 };
+  }
+  return {
+    scene: parseInt(match[1], 10),
+    shaft: match[2] || '',
+    screen: parseInt(match[3], 10),
+  };
+}
+
+// Smart sort for ShowSets: Scene ASC, Screen ASC, Shaft ASC (alphabetically, case-insensitive)
+function sortShowSets(showSets: ShowSet[]): ShowSet[] {
+  return [...showSets].sort((a, b) => {
+    const parsedA = parseShowSetId(a.showSetId);
+    const parsedB = parseShowSetId(b.showSetId);
+
+    // First, sort by scene
+    if (parsedA.scene !== parsedB.scene) {
+      return parsedA.scene - parsedB.scene;
+    }
+
+    // Then, sort by screen number
+    if (parsedA.screen !== parsedB.screen) {
+      return parsedA.screen - parsedB.screen;
+    }
+
+    // Finally, sort by shaft ID alphabetically (case-insensitive)
+    return parsedA.shaft.toLowerCase().localeCompare(parsedB.shaft.toLowerCase());
+  });
+}
+
 // Return type for ShowSets data hooks
 interface ShowSetsDataResult {
   showSets: ShowSet[];
@@ -106,7 +143,7 @@ export function useShowSetsGraphQL(area?: string): ShowSetsDataResult {
   });
 
   const showSets: ShowSet[] = useMemo(
-    () => (data?.listShowSets || []).map(transformShowSet),
+    () => sortShowSets((data?.listShowSets || []).map(transformShowSet)),
     [data?.listShowSets]
   );
 
@@ -127,8 +164,10 @@ export function useShowSetsREST(area?: string): ShowSetsDataResult {
     refetchInterval: 15000, // Poll every 15 seconds
   });
 
+  const sortedShowSets = useMemo(() => sortShowSets(data ?? []), [data]);
+
   return {
-    showSets: data ?? [],
+    showSets: sortedShowSets,
     isLoading,
     error: error?.message,
     refetch,

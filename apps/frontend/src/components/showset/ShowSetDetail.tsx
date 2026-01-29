@@ -43,6 +43,7 @@ import {
 } from '@/components/ui/tooltip';
 import { IssuesModal, IssueItem, CreateIssueForm } from '@/components/issues';
 import { EditShowSetDialog } from './EditShowSetDialog';
+import { RequestUpstreamRevisionDialog } from './RequestUpstreamRevisionDialog';
 
 // Helper to check if ShowSet is locked (simple flag - admin controls)
 function isShowSetLocked(showSet: ShowSet): boolean {
@@ -196,6 +197,10 @@ export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: Sho
 
   // Unlock dialog state
   const [unlockDialogOpen, setUnlockDialogOpen] = useState(false);
+
+  // Upstream revision dialog state
+  const [upstreamRevisionDialogOpen, setUpstreamRevisionDialogOpen] = useState(false);
+  const [upstreamRevisionCurrentStage, setUpstreamRevisionCurrentStage] = useState<StageName | null>(null);
 
   const { data: issues = [] } = useQuery({
     queryKey: ['issues', showSet.showSetId],
@@ -476,13 +481,33 @@ export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: Sho
 
         {/* Stages - Workflow View */}
         <div className="space-y-1">
-          <button
-            className="flex items-center gap-1 text-sm font-medium w-full text-left"
-            onClick={() => setStagesExpanded(!stagesExpanded)}
-          >
-            {stagesExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-            {t('showset.stages')}
-          </button>
+          <div className="flex items-center justify-between">
+            <button
+              className="flex items-center gap-1 text-sm font-medium text-left"
+              onClick={() => setStagesExpanded(!stagesExpanded)}
+            >
+              {stagesExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              {t('showset.stages')}
+            </button>
+            {currentRole !== 'view_only' && !isLocked && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  // Find the first in_progress stage or the first not_started stage
+                  const inProgressStage = STAGES.find(s => showSet.stages[s].status === 'in_progress');
+                  const revisionStage = STAGES.find(s => showSet.stages[s].status === 'revision_required');
+                  const targetStage = inProgressStage || revisionStage || 'screen';
+                  setUpstreamRevisionCurrentStage(targetStage);
+                  setUpstreamRevisionDialogOpen(true);
+                }}
+                className="text-xs h-7"
+              >
+                <AlertTriangle className="h-3 w-3 mr-1" />
+                {t('revision.requestUpstream', 'Request Revision')}
+              </Button>
+            )}
+          </div>
           {stagesExpanded && (
             <div className="relative pl-4 pt-2">
               {/* Vertical line */}
@@ -767,6 +792,19 @@ export function ShowSetDetail({ showSet, open, onClose, notesOnly = false }: Sho
         onConfirm={(stagesToReset) => unlockMutation.mutate(stagesToReset)}
         isLoading={unlockMutation.isPending}
       />
+
+      {/* Request Upstream Revision Dialog */}
+      {upstreamRevisionCurrentStage && (
+        <RequestUpstreamRevisionDialog
+          showSet={showSet}
+          currentStage={upstreamRevisionCurrentStage}
+          open={upstreamRevisionDialogOpen}
+          onClose={() => setUpstreamRevisionDialogOpen(false)}
+          onSuccess={() => {
+            // Optionally show a success message
+          }}
+        />
+      )}
 
     </>
   );

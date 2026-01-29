@@ -193,7 +193,7 @@ function getVersionTypeForStage(stage: StageName): VersionType | null {
 }
 
 // Stages that support revision_required
-const REVISION_STAGES: StageName[] = ['integrated', 'inBim360', 'drawing2d'];
+const REVISION_STAGES: StageName[] = ['screen', 'structure', 'integrated', 'inBim360', 'drawing2d'];
 
 // Stage order for cascade resets
 const STAGE_ORDER: StageName[] = ['screen', 'structure', 'integrated', 'inBim360', 'drawing2d'];
@@ -1457,10 +1457,10 @@ const requestUpstreamRevision: AuthenticatedHandler = async (event, auth) => {
     const targetIndices = targetStages.map(s => STAGE_ORDER.indexOf(s));
     const earliestTargetIdx = Math.min(...targetIndices);
 
-    // All stages from earliest target through current stage (exclusive) need to be set to revision_required
-    // This ensures intermediate stages are also marked
+    // All stages from earliest target through current stage (inclusive) need to be set to revision_required
+    // This ensures intermediate stages and the current stage are also marked
     const stagesToReset: StageName[] = [];
-    for (let i = earliestTargetIdx; i < currentIdx; i++) {
+    for (let i = earliestTargetIdx; i <= currentIdx; i++) {
       stagesToReset.push(STAGE_ORDER[i]);
     }
 

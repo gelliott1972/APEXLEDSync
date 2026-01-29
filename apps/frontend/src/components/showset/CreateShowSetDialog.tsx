@@ -27,8 +27,8 @@ interface CreateShowSetDialogProps {
 
 const schema = z.object({
   showSetId: z.string().refine(
-    (val) => /^SS-\d{2}[A-Za-z]*-\d{2}$/.test(val.trim()),
-    'Format: SS-XX-XX or SS-XXYY-XX (e.g. SS-09BC-01)'
+    (val) => /^SS-\d{2,3}[A-Za-z]*-\d{2}$/.test(val.trim()),
+    'Format: SS-XX-XX or SS-XXX-XX (with optional letters like SS-10BC-01)'
   ),
   area: z.enum(['311', '312']),
   scene: z.string().refine(

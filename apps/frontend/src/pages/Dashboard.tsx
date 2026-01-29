@@ -65,6 +65,19 @@ export function DashboardPage() {
   const scenes = [...new Set(showSets.map((s) => s.scene))].sort();
 
   // Filter showSets based on search and scene
+  // Helper to parse ShowSet ID for smart sorting
+  const parseShowSetId = (showSetId: string): { scene: number; shaft: string; screen: number } => {
+    const match = showSetId.match(/^SS-(\d+)([A-Za-z]*)-(\d+)$/);
+    if (!match) {
+      return { scene: 0, shaft: '', screen: 0 };
+    }
+    return {
+      scene: parseInt(match[1], 10),
+      shaft: match[2] || '',
+      screen: parseInt(match[3], 10),
+    };
+  };
+
   const filteredShowSets = showSets
     .filter((showSet) => {
       // Search filter
@@ -87,11 +100,24 @@ export function DashboardPage() {
 
       return true;
     })
-    // Sort by project (area) then ShowSet ID
+    // Sort by project (area) then ShowSet ID (smart sort: scene, screen, shaft)
     .sort((a, b) => {
       const areaCompare = a.area.localeCompare(b.area);
       if (areaCompare !== 0) return areaCompare;
-      return a.showSetId.localeCompare(b.showSetId);
+
+      // Smart sort by scene, screen, then shaft
+      const parsedA = parseShowSetId(a.showSetId);
+      const parsedB = parseShowSetId(b.showSetId);
+
+      if (parsedA.scene !== parsedB.scene) {
+        return parsedA.scene - parsedB.scene;
+      }
+
+      if (parsedA.screen !== parsedB.screen) {
+        return parsedA.screen - parsedB.screen;
+      }
+
+      return parsedA.shaft.toLowerCase().localeCompare(parsedB.shaft.toLowerCase());
     });
 
   const selectedShowSet = selectedShowSetId
