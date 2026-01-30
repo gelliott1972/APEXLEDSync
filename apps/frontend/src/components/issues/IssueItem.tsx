@@ -15,8 +15,6 @@ import {
   Loader2,
   Languages,
   MessageSquare,
-  Lock,
-  Unlock,
   Eye,
   Maximize2,
   Minimize2,
@@ -445,7 +443,20 @@ export function IssueItem({ issue, showSetId, onClick, isCompact = false, showSh
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             {isUnread && <span className="h-2 w-2 rounded-full bg-blue-500 shrink-0" title={t('issues.unread')} />}
-            <IssueStatusBadge status={issue.status} />
+            <span onClick={(e) => e.stopPropagation()}>
+              <IssueStatusBadge
+                status={issue.status}
+                canClose={canClose}
+                isLoading={closeMutation.isPending || reopenMutation.isPending}
+                onClick={() => {
+                  if (issue.status === 'open') {
+                    closeMutation.mutate();
+                  } else {
+                    reopenMutation.mutate();
+                  }
+                }}
+              />
+            </span>
             {isRevision && <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />}
             <span className="text-sm truncate">{content}</span>
           </div>
@@ -485,7 +496,18 @@ export function IssueItem({ issue, showSetId, onClick, isCompact = false, showSh
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <IssueStatusBadge status={issue.status} />
+          <IssueStatusBadge
+            status={issue.status}
+            canClose={canClose}
+            isLoading={closeMutation.isPending || reopenMutation.isPending}
+            onClick={() => {
+              if (issue.status === 'open') {
+                closeMutation.mutate();
+              } else {
+                reopenMutation.mutate();
+              }
+            }}
+          />
           {isRevision && <AlertTriangle className="h-3 w-3 text-amber-500" />}
           <p className="text-xs text-muted-foreground">
             {time} · {issue.authorName}
@@ -503,33 +525,6 @@ export function IssueItem({ issue, showSetId, onClick, isCompact = false, showSh
               <MessageSquare className="h-3 w-3" />
               {issue.replyCount}
             </span>
-          )}
-          {canClose && (
-            <>
-              {issue.status === 'open' ? (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6"
-                  onClick={() => closeMutation.mutate()}
-                  disabled={closeMutation.isPending}
-                  title={t('issues.close')}
-                >
-                  <Lock className="h-3 w-3" />
-                </Button>
-              ) : (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6"
-                  onClick={() => reopenMutation.mutate()}
-                  disabled={reopenMutation.isPending}
-                  title={t('issues.reopen')}
-                >
-                  <Unlock className="h-3 w-3" />
-                </Button>
-              )}
-            </>
           )}
           {canEdit && (
             <>

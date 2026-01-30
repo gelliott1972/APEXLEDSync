@@ -807,10 +807,10 @@ const getMyIssues: AuthenticatedHandler = async (_event, auth) => {
     // Count open issues where user is author or mentioned
     const openCount = allRootIssues.filter((i) => i.status === 'open').length;
 
-    // Find issues with unread replies for this user
+    // Find open issues with unread replies for this user
     const unreadIssues = allRootIssues.filter((i) => {
       const unreadFor = i.unreadFor ?? [];
-      return unreadFor.includes(auth.userId);
+      return i.status === 'open' && unreadFor.includes(auth.userId);
     });
 
     const unreadCount = unreadIssues.length;
