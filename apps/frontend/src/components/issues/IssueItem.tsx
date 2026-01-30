@@ -23,6 +23,7 @@ import type { Issue, Language, NoteAttachment } from '@unisync/shared-types';
 import { issuesApi } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
   DialogContent,
@@ -357,6 +358,7 @@ export function IssueItem({ issue, showSetId, onClick, isCompact = false, showSh
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const { user, effectiveRole } = useAuthStore();
+  const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -383,6 +385,14 @@ export function IssueItem({ issue, showSetId, onClick, isCompact = false, showSh
       queryClient.invalidateQueries({ queryKey: ['issues', showSetId] });
       queryClient.invalidateQueries({ queryKey: ['my-issues'] });
     },
+    onError: (error: Error) => {
+      console.error('Close issue error:', error);
+      toast({
+        variant: 'destructive',
+        title: t('issues.closeError', 'Failed to close issue'),
+        description: error.message,
+      });
+    },
   });
 
   const reopenMutation = useMutation({
@@ -390,6 +400,14 @@ export function IssueItem({ issue, showSetId, onClick, isCompact = false, showSh
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['issues', showSetId] });
       queryClient.invalidateQueries({ queryKey: ['my-issues'] });
+    },
+    onError: (error: Error) => {
+      console.error('Reopen issue error:', error);
+      toast({
+        variant: 'destructive',
+        title: t('issues.reopenError', 'Failed to reopen issue'),
+        description: error.message,
+      });
     },
   });
 
