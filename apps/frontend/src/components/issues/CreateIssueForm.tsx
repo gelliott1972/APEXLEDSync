@@ -48,8 +48,8 @@ export function CreateIssueForm({
 
   // Fetch users for @mention autocomplete
   const { data: users = [] } = useQuery({
-    queryKey: ['users'],
-    queryFn: usersApi.list,
+    queryKey: ['users-for-mention'],
+    queryFn: usersApi.listForMention,
     staleTime: 60000,
   });
 
@@ -96,6 +96,39 @@ export function CreateIssueForm({
       setShowMentionDropdown(true);
     } else {
       setShowMentionDropdown(false);
+    }
+  };
+
+  // Handle paste events for clipboard images (screenshots)
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    const imageFiles: File[] = [];
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) {
+          // Create a named file from the clipboard blob
+          const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+          const extension = item.type.split('/')[1] || 'png';
+          const namedFile = new File([file], `screenshot-${timestamp}.${extension}`, {
+            type: file.type,
+          });
+
+          if (namedFile.size > 50 * 1024 * 1024) {
+            alert(t('issues.fileTooLarge'));
+            continue;
+          }
+          imageFiles.push(namedFile);
+        }
+      }
+    }
+
+    if (imageFiles.length > 0) {
+      e.preventDefault(); // Prevent pasting image data as text
+      setSelectedFiles((prev) => [...prev, ...imageFiles]);
     }
   };
 
@@ -187,6 +220,10 @@ export function CreateIssueForm({
 
       queryClient.invalidateQueries({ queryKey: ['issues', showSetId] });
       queryClient.invalidateQueries({ queryKey: ['my-issues'] });
+      // Also invalidate the parent issue query so replies appear immediately
+      if (parentIssueId) {
+        queryClient.invalidateQueries({ queryKey: ['issue', parentIssueId, showSetId] });
+      }
       setContent('');
       setSelectedFiles([]);
       onClose();
@@ -209,6 +246,7 @@ export function CreateIssueForm({
           placeholder={parentIssueId ? t('issues.addReply') : t('issues.createIssue')}
           value={content}
           onChange={handleContentChange}
+          onPaste={handlePaste}
         />
 
         {/* Mention dropdown */}
@@ -227,7 +265,11 @@ export function CreateIssueForm({
         )}
       </div>
 
-      <p className="text-xs text-muted-foreground">{t('issues.mentionUser')}</p>
+      <p className="text-xs text-muted-foreground flex items-center gap-1">
+        {t('issues.mentionUser')} ·
+        <Image className="h-3 w-3 inline" />
+        {t('issues.pasteScreenshot', 'Paste screenshots with Ctrl+V')}
+      </p>
 
       {/* Selected files display */}
       {selectedFiles.length > 0 && (

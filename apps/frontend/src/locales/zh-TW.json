@@ -115,8 +115,11 @@
     "mentionedIn": "提及我的",
     "createIssue": "建立問題",
     "noIssues": "暫無問題",
+    "noOpenIssues": "沒有未解決的問題",
+    "noClosedIssues": "沒有已關閉的問題",
     "noReplies": "暫無回覆",
-    "replies": "{{count}} 則回覆",
+    "replies_one": "{{count}} 則回覆",
+    "replies_other": "{{count}} 則回覆",
     "reply": "回覆",
     "addReply": "新增回覆",
     "viewAll": "檢視全部",
@@ -129,6 +132,7 @@
     "filterClosed": "只顯示已關閉",
     "filterAll": "顯示全部",
     "mentionUser": "使用 @ 提及使用者",
+    "pasteScreenshot": "使用 Ctrl+V 貼上截圖",
     "translating": "翻譯中...",
     "translationFailed": "翻譯失敗",
     "attachFile": "附加檔案",
@@ -139,7 +143,15 @@
     "showSetIssues": "{{id}} 的問題",
     "backToList": "返回列表",
     "openIssues": "{{count}} 個未解決",
-    "viewIssues": "檢視問題"
+    "viewIssues": "檢視問題",
+    "markClosed": "標記關閉",
+    "closePromptTitle": "關閉此問題？",
+    "closePromptDescription": "添加評論說明此問題是如何解決的。",
+    "closingCommentPlaceholder": "描述此問題是如何解決的...",
+    "keepOpen": "保持開放",
+    "closeIssue": "關閉問題",
+    "closeError": "關閉問題失敗",
+    "reopenError": "重新打開問題失敗"
   },
   "sessions": {
     "title": "活動工作階段",
@@ -239,6 +251,12 @@
   },
   "testing": {
     "roleSwitcher": "測試角色"
+  },
+  "notifications": {
+    "newReplies": "回覆",
+    "tagged": "提及",
+    "noNewReplies": "沒有新回覆",
+    "noTagged": "沒有提及您的問題"
   },
   "approval": {
     "title": "審核階段",

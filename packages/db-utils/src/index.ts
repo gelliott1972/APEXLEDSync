@@ -131,6 +131,10 @@ export const keys = {
     GSI1SK: `ISSUE#${timestamp}#${issueId}`,
   }),
   issueMention: (userId: string, showSetId: string, timestamp: string, issueId: string) => ({
+    // Base table keys required for every DynamoDB item
+    PK: `MENTION#${userId}`,
+    SK: `ISSUE#${showSetId}#${timestamp}#${issueId}`,
+    // GSI2 keys for mention lookup
     GSI2PK: `MENTION#${userId}`,
     GSI2SK: `ISSUE#${showSetId}#${timestamp}#${issueId}`,
   }),

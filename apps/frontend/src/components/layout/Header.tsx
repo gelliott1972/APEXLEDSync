@@ -1,15 +1,15 @@
 import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
-import { Languages, LogOut, User, LayoutDashboard, Activity, Users, Moon, Sun, Plus, FlaskConical, MessageSquare } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Languages, LogOut, User, LayoutDashboard, Activity, Users, Moon, Sun, Plus, FlaskConical } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import type { UserRole } from '@unisync/shared-types';
 import { useSessionStore } from '@/stores/session-store';
 import { useUIStore } from '@/stores/ui-store';
 import { issuesApi, profileApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { IssuesModal } from '@/components/issues';
+import { HeaderNotifications } from '@/components/notifications';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,16 +37,17 @@ export function Header() {
   const { t, i18n } = useTranslation();
   const { user, logout, effectiveRole, roleOverride, showRoleSwitcher, setRoleOverride, setShowRoleSwitcher } = useAuthStore();
   const { isWorking, activity, endSession } = useSessionStore();
+  const queryClient = useQueryClient();
   const canSwitchRoles = user?.email === 'grant@candelic.com';
   const { theme, toggleTheme } = useUIStore();
   const location = useLocation();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [issuesModalOpen, setIssuesModalOpen] = useState(false);
 
-  // Query for open issues count (badge)
+  // Query for open issues count (badge) - include userId in key to prevent cross-user caching
   const { data: myIssues } = useQuery({
-    queryKey: ['my-issues'],
+    queryKey: ['my-issues', user?.userId],
     queryFn: issuesApi.myIssues,
+    enabled: !!user?.userId,
     refetchInterval: 60000,
   });
 
@@ -67,6 +68,8 @@ export function Header() {
     if (isWorking) {
       await endSession();
     }
+    // Clear all query cache to prevent cross-user data leakage
+    queryClient.clear();
     await logout();
   };
 
@@ -161,26 +164,13 @@ export function Header() {
             </Button>
           )}
 
+          {/* Issue Notification Boxes */}
+          <HeaderNotifications myIssues={myIssues} />
+
           {/* Theme Toggle */}
           <Button variant="ghost" size="icon" className="h-9 w-9" onClick={toggleTheme}>
             {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
             <span className="sr-only">Toggle theme</span>
-          </Button>
-
-          {/* Issues Button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9 relative"
-            onClick={() => setIssuesModalOpen(true)}
-            title={t('issues.myIssues')}
-          >
-            <MessageSquare className="h-5 w-5" />
-            {myIssues?.unreadCount && myIssues.unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 text-[10px] font-medium bg-destructive text-destructive-foreground rounded-full flex items-center justify-center">
-                {myIssues.unreadCount > 99 ? '99+' : myIssues.unreadCount}
-              </span>
-            )}
           </Button>
 
           {/* Language Selector */}
@@ -268,12 +258,6 @@ export function Header() {
       <CreateShowSetDialog
         open={createDialogOpen}
         onClose={() => setCreateDialogOpen(false)}
-      />
-
-      {/* Issues Modal */}
-      <IssuesModal
-        open={issuesModalOpen}
-        onClose={() => setIssuesModalOpen(false)}
       />
     </header>
   );

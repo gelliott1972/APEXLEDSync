@@ -1,6 +1,6 @@
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { z } from 'zod';
-import { PutCommand, UpdateCommand, DeleteCommand, QueryCommand, BatchWriteCommand } from '@aws-sdk/lib-dynamodb';
+import { PutCommand, UpdateCommand, DeleteCommand, QueryCommand, BatchWriteCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
@@ -193,13 +193,17 @@ function parseMentions(content: string): string[] {
 async function resolveUserMentions(userNames: string[]): Promise<IssueMention[]> {
   if (userNames.length === 0) return [];
 
-  // Query users table to find users by name
+  // Scan users table to find users by name (no GSI by name exists)
   const result = await docClient.send(
-    new QueryCommand({
+    new ScanCommand({
       TableName: TABLE_NAMES.USERS,
-      KeyConditionExpression: 'PK = :pk',
+      FilterExpression: 'SK = :sk',
       ExpressionAttributeValues: {
-        ':pk': 'USERS',
+        ':sk': 'PROFILE',
+      },
+      ProjectionExpression: 'userId, #n',
+      ExpressionAttributeNames: {
+        '#n': 'name',
       },
     })
   );
@@ -663,6 +667,14 @@ const closeIssue: AuthenticatedHandler = async (event, auth) => {
       return validationError('showSetId query parameter is required');
     }
 
+    // Parse closing comment from body
+    const body = JSON.parse(event.body ?? '{}');
+    const closingComment = body.comment;
+
+    if (!closingComment || typeof closingComment !== 'string' || !closingComment.trim()) {
+      return validationError('A closing comment is required');
+    }
+
     const issue = await findIssue(showSetId, issueId);
     if (!issue) {
       return notFound('Issue');
@@ -682,7 +694,7 @@ const closeIssue: AuthenticatedHandler = async (event, auth) => {
       new UpdateCommand({
         TableName: TABLE_NAMES.NOTES,
         Key: { PK: issue.PK, SK: issue.SK },
-        UpdateExpression: 'SET #status = :status, closedAt = :closedAt, closedBy = :closedBy, closedByName = :closedByName, updatedAt = :updatedAt',
+        UpdateExpression: 'SET #status = :status, closedAt = :closedAt, closedBy = :closedBy, closedByName = :closedByName, closingComment = :closingComment, updatedAt = :updatedAt',
         ExpressionAttributeNames: {
           '#status': 'status',
         },
@@ -691,6 +703,7 @@ const closeIssue: AuthenticatedHandler = async (event, auth) => {
           ':closedAt': timestamp,
           ':closedBy': auth.userId,
           ':closedByName': auth.name,
+          ':closingComment': closingComment.trim(),
           ':updatedAt': timestamp,
         },
       })
@@ -698,6 +711,7 @@ const closeIssue: AuthenticatedHandler = async (event, auth) => {
 
     await logActivity(showSetId, auth.userId, auth.name, 'issue_closed', {
       issueId,
+      closingComment: closingComment.trim(),
     });
 
     return success({ message: 'Issue closed successfully' });
@@ -762,47 +776,92 @@ const reopenIssue: AuthenticatedHandler = async (event, auth) => {
 
 const getMyIssues: AuthenticatedHandler = async (_event, auth) => {
   try {
-    // Query issues created by this user (GSI1)
-    const createdByMeResult = await docClient.send(
-      new QueryCommand({
-        TableName: TABLE_NAMES.NOTES,
-        IndexName: GSI_NAMES.ISSUE_AUTHOR_INDEX,
-        KeyConditionExpression: 'GSI1PK = :pk AND begins_with(GSI1SK, :skPrefix)',
-        ExpressionAttributeValues: {
-          ':pk': `USER#${auth.userId}`,
-          ':skPrefix': 'ISSUE#',
-        },
-        ScanIndexForward: false,
-        Limit: 50,
-      })
-    );
+    let createdByMe: Issue[] = [];
+    let mentionedIn: Issue[] = [];
 
-    // Query issues where user is mentioned (GSI2)
-    const mentionedInResult = await docClient.send(
-      new QueryCommand({
-        TableName: TABLE_NAMES.NOTES,
-        IndexName: GSI_NAMES.ISSUE_MENTION_INDEX,
-        KeyConditionExpression: 'GSI2PK = :pk AND begins_with(GSI2SK, :skPrefix)',
-        ExpressionAttributeValues: {
-          ':pk': `MENTION#${auth.userId}`,
-          ':skPrefix': 'ISSUE#',
-        },
-        ScanIndexForward: false,
-        Limit: 50,
-      })
-    );
+    // Try to use GSI, fall back to scan if index doesn't exist
+    try {
+      // Query issues created by this user (GSI1)
+      const createdByMeResult = await docClient.send(
+        new QueryCommand({
+          TableName: TABLE_NAMES.NOTES,
+          IndexName: GSI_NAMES.ISSUE_AUTHOR_INDEX,
+          KeyConditionExpression: 'GSI1PK = :pk AND begins_with(GSI1SK, :skPrefix)',
+          ExpressionAttributeValues: {
+            ':pk': `USER#${auth.userId}`,
+            ':skPrefix': 'ISSUE#',
+          },
+          ScanIndexForward: false,
+          Limit: 50,
+        })
+      );
+      createdByMe = (createdByMeResult.Items ?? []) as Issue[];
+    } catch (gsiError: unknown) {
+      // GSI may not exist - fall back to empty (user can still see issues via showset)
+      console.warn('GSI1 query failed, GSI may not exist:', (gsiError as Error).message);
+    }
 
-    const createdByMe = (createdByMeResult.Items ?? []) as Issue[];
-    const mentionedIn = (mentionedInResult.Items ?? []).filter(
-      (item: Record<string, unknown>) => item.itemType !== 'MENTION_INDEX'
-    ) as Issue[];
+    try {
+      // Query mention index entries (GSI2) - these are pointers to issues
+      const mentionIndexResult = await docClient.send(
+        new QueryCommand({
+          TableName: TABLE_NAMES.NOTES,
+          IndexName: GSI_NAMES.ISSUE_MENTION_INDEX,
+          KeyConditionExpression: 'GSI2PK = :pk AND begins_with(GSI2SK, :skPrefix)',
+          ExpressionAttributeValues: {
+            ':pk': `MENTION#${auth.userId}`,
+            ':skPrefix': 'ISSUE#',
+          },
+          ScanIndexForward: false,
+          Limit: 50,
+        })
+      );
 
-    // Filter to root issues only
+      // MENTION_INDEX entries contain issueId and showSetId - fetch the actual issues
+      const mentionIndexEntries = (mentionIndexResult.Items ?? []).filter(
+        (item: Record<string, unknown>) => item.itemType === 'MENTION_INDEX'
+      );
+
+      // Fetch each mentioned issue
+      for (const entry of mentionIndexEntries) {
+        const issue = await findIssue(entry.showSetId as string, entry.issueId as string);
+        if (issue && !mentionedIn.some((i) => i.issueId === issue.issueId)) {
+          mentionedIn.push(issue);
+        }
+      }
+    } catch (gsiError: unknown) {
+      // GSI may not exist - fall back to empty
+      console.warn('GSI2 query failed, GSI may not exist:', (gsiError as Error).message);
+    }
+
+    // Filter created issues to root issues only
     const rootCreated = createdByMe.filter((i) => !i.parentIssueId);
-    const rootMentioned = mentionedIn.filter((i) => !i.parentIssueId);
+
+    // For mentioned issues: if mentioned in a reply, fetch the parent issue instead
+    const rootMentionedDirect = mentionedIn.filter((i) => !i.parentIssueId);
+    const repliesMentioned = mentionedIn.filter((i) => i.parentIssueId);
+
+    // Fetch parent issues for replies where user is mentioned
+    const parentIssueIds = [...new Set(repliesMentioned.map((r) => ({ showSetId: r.showSetId, parentIssueId: r.parentIssueId! })))];
+    const parentIssuesFromReplies: Issue[] = [];
+
+    for (const { showSetId, parentIssueId } of parentIssueIds) {
+      const parentIssue = await findIssue(showSetId, parentIssueId);
+      if (parentIssue && !parentIssuesFromReplies.some((p) => p.issueId === parentIssue.issueId)) {
+        parentIssuesFromReplies.push(parentIssue);
+      }
+    }
+
+    // Combine direct mentions and parent issues from reply mentions (deduplicate)
+    const allMentioned = [...rootMentionedDirect];
+    for (const parentIssue of parentIssuesFromReplies) {
+      if (!allMentioned.some((i) => i.issueId === parentIssue.issueId)) {
+        allMentioned.push(parentIssue);
+      }
+    }
 
     // Combine all root issues
-    const allRootIssues = [...rootCreated, ...rootMentioned];
+    const allRootIssues = [...rootCreated, ...allMentioned];
 
     // Count open issues where user is author or mentioned
     const openCount = allRootIssues.filter((i) => i.status === 'open').length;
@@ -818,7 +877,7 @@ const getMyIssues: AuthenticatedHandler = async (_event, auth) => {
 
     return success({
       createdByMe: rootCreated,
-      mentionedIn: rootMentioned,
+      mentionedIn: allMentioned,
       openCount,
       unreadCount,
       unreadIssueIds,
@@ -831,50 +890,60 @@ const getMyIssues: AuthenticatedHandler = async (_event, auth) => {
 
 const getClosedIssues: AuthenticatedHandler = async (_event, auth) => {
   try {
-    // Query closed issues created by this user (GSI1)
-    const createdByMeResult = await docClient.send(
-      new QueryCommand({
-        TableName: TABLE_NAMES.NOTES,
-        IndexName: GSI_NAMES.ISSUE_AUTHOR_INDEX,
-        KeyConditionExpression: 'GSI1PK = :pk AND begins_with(GSI1SK, :skPrefix)',
-        FilterExpression: '#status = :closed AND attribute_not_exists(parentIssueId)',
-        ExpressionAttributeNames: {
-          '#status': 'status',
-        },
-        ExpressionAttributeValues: {
-          ':pk': `USER#${auth.userId}`,
-          ':skPrefix': 'ISSUE#',
-          ':closed': 'closed',
-        },
-        ScanIndexForward: false,
-        Limit: 100,
-      })
-    );
+    let createdByMe: Issue[] = [];
+    let mentionedIn: Issue[] = [];
 
-    // Query closed issues where user is mentioned (GSI2)
-    const mentionedInResult = await docClient.send(
-      new QueryCommand({
-        TableName: TABLE_NAMES.NOTES,
-        IndexName: GSI_NAMES.ISSUE_MENTION_INDEX,
-        KeyConditionExpression: 'GSI2PK = :pk AND begins_with(GSI2SK, :skPrefix)',
-        FilterExpression: '#status = :closed AND attribute_not_exists(parentIssueId)',
-        ExpressionAttributeNames: {
-          '#status': 'status',
-        },
-        ExpressionAttributeValues: {
-          ':pk': `MENTION#${auth.userId}`,
-          ':skPrefix': 'ISSUE#',
-          ':closed': 'closed',
-        },
-        ScanIndexForward: false,
-        Limit: 100,
-      })
-    );
+    try {
+      // Query closed issues created by this user (GSI1)
+      const createdByMeResult = await docClient.send(
+        new QueryCommand({
+          TableName: TABLE_NAMES.NOTES,
+          IndexName: GSI_NAMES.ISSUE_AUTHOR_INDEX,
+          KeyConditionExpression: 'GSI1PK = :pk AND begins_with(GSI1SK, :skPrefix)',
+          FilterExpression: '#status = :closed AND attribute_not_exists(parentIssueId)',
+          ExpressionAttributeNames: {
+            '#status': 'status',
+          },
+          ExpressionAttributeValues: {
+            ':pk': `USER#${auth.userId}`,
+            ':skPrefix': 'ISSUE#',
+            ':closed': 'closed',
+          },
+          ScanIndexForward: false,
+          Limit: 100,
+        })
+      );
+      createdByMe = (createdByMeResult.Items ?? []) as Issue[];
+    } catch (gsiError: unknown) {
+      console.warn('GSI1 query failed for closed issues:', (gsiError as Error).message);
+    }
 
-    const createdByMe = (createdByMeResult.Items ?? []) as Issue[];
-    const mentionedIn = (mentionedInResult.Items ?? []).filter(
-      (item: Record<string, unknown>) => item.itemType !== 'MENTION_INDEX'
-    ) as Issue[];
+    try {
+      // Query closed issues where user is mentioned (GSI2)
+      const mentionedInResult = await docClient.send(
+        new QueryCommand({
+          TableName: TABLE_NAMES.NOTES,
+          IndexName: GSI_NAMES.ISSUE_MENTION_INDEX,
+          KeyConditionExpression: 'GSI2PK = :pk AND begins_with(GSI2SK, :skPrefix)',
+          FilterExpression: '#status = :closed AND attribute_not_exists(parentIssueId)',
+          ExpressionAttributeNames: {
+            '#status': 'status',
+          },
+          ExpressionAttributeValues: {
+            ':pk': `MENTION#${auth.userId}`,
+            ':skPrefix': 'ISSUE#',
+            ':closed': 'closed',
+          },
+          ScanIndexForward: false,
+          Limit: 100,
+        })
+      );
+      mentionedIn = (mentionedInResult.Items ?? []).filter(
+        (item: Record<string, unknown>) => item.itemType !== 'MENTION_INDEX'
+      ) as Issue[];
+    } catch (gsiError: unknown) {
+      console.warn('GSI2 query failed for closed issues:', (gsiError as Error).message);
+    }
 
     // Combine and dedupe
     const issueMap = new Map<string, Issue>();

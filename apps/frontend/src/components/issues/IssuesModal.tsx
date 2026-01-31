@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
-import { MessageSquare, ArrowLeft } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { MessageSquare, ArrowLeft, Plus, CheckCircle } from 'lucide-react';
 import type { Issue } from '@unisync/shared-types';
 import { issuesApi } from '@/lib/api';
+import { useAuthStore } from '@/stores/auth-store';
+import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
   DialogContent,
@@ -12,59 +14,103 @@ import {
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { IssueListView } from './IssueListView';
 import { IssueDetailView } from './IssueDetailView';
-import { IssueItem } from './IssueItem';
+import { IssueItemCompact } from './IssueItemCompact';
+import { CreateIssueForm } from './CreateIssueForm';
+import { CloseIssueDialog } from './CloseIssueDialog';
 
-type TabValue = 'showset' | 'created' | 'mentioned' | 'closed';
+type TabValue = 'open' | 'closed';
 
 interface IssuesModalProps {
   open: boolean;
   onClose: () => void;
-  showSetId?: string; // If provided, shows ShowSet tab first
+  showSetId?: string;
   showSetName?: string;
+  initialIssueId?: string;
 }
 
-export function IssuesModal({ open, onClose, showSetId, showSetName }: IssuesModalProps) {
+export function IssuesModal({ open, onClose, showSetId, showSetName, initialIssueId }: IssuesModalProps) {
   const { t } = useTranslation();
+  const { user, effectiveRole } = useAuthStore();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
-  // Default to 'showset' tab if showSetId provided, otherwise 'created'
-  const [activeTab, setActiveTab] = useState<TabValue>(showSetId ? 'showset' : 'created');
+  const [activeTab, setActiveTab] = useState<TabValue>('open');
+  const [isCreating, setIsCreating] = useState(false);
+  const [showCloseDialog, setShowCloseDialog] = useState(false);
+
+  const currentRole = effectiveRole();
+  const isViewOnly = currentRole === 'view_only';
 
   // Reset state when modal opens/closes or showSetId changes
   useEffect(() => {
     if (open) {
       setSelectedIssue(null);
-      setActiveTab(showSetId ? 'showset' : 'created');
+      setActiveTab('open');
+      setIsCreating(false);
     }
   }, [open, showSetId]);
 
-  // My Issues query (for created/mentioned tabs)
-  const { data: myIssues } = useQuery({
-    queryKey: ['my-issues'],
-    queryFn: issuesApi.myIssues,
-    enabled: open,
-    refetchInterval: 60000,
-  });
-
-  // ShowSet Issues query (for showset tab)
-  const { data: showSetIssues = [] } = useQuery({
+  // ShowSet Issues query
+  const { data: issues = [], isLoading } = useQuery({
     queryKey: ['issues', showSetId],
     queryFn: () => issuesApi.list(showSetId!),
     enabled: open && !!showSetId,
     refetchInterval: 60000,
   });
 
-  // Closed Issues query
-  const { data: closedIssuesData } = useQuery({
-    queryKey: ['closed-issues'],
-    queryFn: issuesApi.closedIssues,
-    enabled: open,
+  // My Issues query (for unread indicators) - include userId to prevent cross-user caching
+  const { data: myIssues } = useQuery({
+    queryKey: ['my-issues', user?.userId],
+    queryFn: issuesApi.myIssues,
+    enabled: open && !!user?.userId,
     refetchInterval: 60000,
   });
 
+  // Auto-select issue when initialIssueId is provided and issues are loaded
+  useEffect(() => {
+    if (open && initialIssueId && issues.length > 0 && !selectedIssue) {
+      const issue = issues.find(i => i.issueId === initialIssueId);
+      if (issue) {
+        setSelectedIssue(issue);
+        setActiveTab(issue.status === 'closed' ? 'closed' : 'open');
+      }
+    }
+  }, [open, initialIssueId, issues, selectedIssue]);
+
+  // Close issue mutation
+  const closeMutation = useMutation({
+    mutationFn: (comment: string) => {
+      if (!selectedIssue) throw new Error('No issue selected');
+      return issuesApi.close(selectedIssue.issueId, selectedIssue.showSetId, comment);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['issues', showSetId] });
+      queryClient.invalidateQueries({ queryKey: ['issue', selectedIssue?.issueId, showSetId] });
+      queryClient.invalidateQueries({ queryKey: ['my-issues'] });
+      queryClient.invalidateQueries({ queryKey: ['closed-issues'] });
+      setShowCloseDialog(false);
+      // Close the entire modal after closing an issue
+      onClose();
+    },
+    onError: (error: Error) => {
+      console.error('Close issue error:', error);
+      toast({
+        variant: 'destructive',
+        title: t('issues.closeError', 'Failed to close issue'),
+        description: error.message,
+      });
+    },
+  });
+
+  // Check if user can close the selected issue
+  const canCloseSelectedIssue = selectedIssue && (
+    currentRole === 'admin' || user?.userId === selectedIssue.authorId
+  );
+
   const handleSelectIssue = (issue: Issue) => {
     setSelectedIssue(issue);
+    setIsCreating(false);
   };
 
   const handleBack = () => {
@@ -73,46 +119,64 @@ export function IssuesModal({ open, onClose, showSetId, showSetName }: IssuesMod
 
   const handleClose = () => {
     setSelectedIssue(null);
+    setIsCreating(false);
     onClose();
   };
 
-  // Get title based on context
-  const getTitle = () => {
-    if (showSetId && showSetName) {
-      return t('issues.showSetIssues', { id: showSetName });
-    }
-    return t('issues.myIssues');
-  };
+  // Filter issues by status (exclude replies)
+  const openIssues = issues.filter(i => i.status === 'open' && !i.parentIssueId);
+  const closedIssues = issues.filter(i => i.status === 'closed' && !i.parentIssueId);
+  const unreadIssueIds = myIssues?.unreadIssueIds ?? [];
+
+  // Get title
+  const title = showSetId && showSetName
+    ? t('issues.showSetIssues', { id: showSetName })
+    : t('issues.myIssues');
 
   // Render issue detail view
   const renderDetailView = () => {
     if (!selectedIssue) return null;
     return (
       <div className="flex flex-col h-full">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="self-start mb-2"
-          onClick={handleBack}
-        >
-          <ArrowLeft className="h-4 w-4 mr-1" />
-          {t('issues.backToList')}
-        </Button>
+        <div className="flex items-center justify-between mb-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleBack}
+          >
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            {t('issues.backToList')}
+          </Button>
+          {canCloseSelectedIssue && selectedIssue.status === 'open' && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowCloseDialog(true)}
+              disabled={closeMutation.isPending}
+            >
+              <CheckCircle className="h-4 w-4 mr-1" />
+              {t('issues.markClosed')}
+            </Button>
+          )}
+        </div>
         <IssueDetailView
           issueId={selectedIssue.issueId}
           showSetId={selectedIssue.showSetId}
+          onIssueClosed={onClose}
+        />
+        <CloseIssueDialog
+          open={showCloseDialog}
+          onClose={() => setShowCloseDialog(false)}
+          onConfirm={(comment) => closeMutation.mutate(comment)}
+          isLoading={closeMutation.isPending}
         />
       </div>
     );
   };
 
-  // Render issue list for a given array
-  const renderIssueList = (issues: Issue[] | undefined, emptyMessage: string) => {
-    if (selectedIssue) {
-      return renderDetailView();
-    }
-
-    if (!issues?.length) {
+  // Render issue list
+  const renderIssueList = (issueList: Issue[], emptyMessage: string) => {
+    if (issueList.length === 0) {
       return (
         <p className="text-sm text-muted-foreground text-center py-8">
           {emptyMessage}
@@ -120,18 +184,13 @@ export function IssuesModal({ open, onClose, showSetId, showSetName }: IssuesMod
       );
     }
 
-    const unreadIssueIds = myIssues?.unreadIssueIds ?? [];
-
     return (
       <div className="space-y-2">
-        {issues.map((issue) => (
-          <IssueItem
+        {issueList.map((issue) => (
+          <IssueItemCompact
             key={issue.issueId}
             issue={issue}
-            showSetId={issue.showSetId}
             onClick={() => handleSelectIssue(issue)}
-            isCompact
-            showShowSetId={activeTab !== 'showset'} // Show ShowSet ID on created/mentioned tabs
             isUnread={unreadIssueIds.includes(issue.issueId)}
           />
         ))}
@@ -139,75 +198,75 @@ export function IssuesModal({ open, onClose, showSetId, showSetName }: IssuesMod
     );
   };
 
-  const openShowSetCount = showSetIssues.filter(i => i.status === 'open' && !i.parentIssueId).length;
-  const createdByMeFiltered = myIssues?.createdByMe?.filter(i => !i.parentIssueId) ?? [];
-  const mentionedInFiltered = myIssues?.mentionedIn?.filter(i => !i.parentIssueId) ?? [];
-  const closedIssues = closedIssuesData?.closedIssues ?? [];
-
   return (
     <Dialog open={open} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-xl max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5" />
-            {getTitle()}
-          </DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              {title}
+            </DialogTitle>
+            {showSetId && !selectedIssue && !isCreating && !isViewOnly && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsCreating(true)}
+                className="mr-6"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </DialogHeader>
 
-        <Tabs
-          value={activeTab}
-          onValueChange={(v: string) => {
-            setActiveTab(v as TabValue);
-            setSelectedIssue(null); // Reset selection when changing tabs
-          }}
-          className="flex-1 flex flex-col min-h-0"
-        >
-          {/* Hide tabs when viewing a single issue */}
-          {!selectedIssue && (
-            <TabsList className={showSetId ? 'grid w-full grid-cols-4' : 'grid w-full grid-cols-3'}>
-              {showSetId && (
-                <TabsTrigger value="showset">
-                  {t('issues.allIssues')}{' '}
-                  {openShowSetCount > 0 && `(${openShowSetCount})`}
-                </TabsTrigger>
-              )}
-              <TabsTrigger value="created">
-                {t('issues.createdByMe')}{' '}
-                {createdByMeFiltered.length > 0 && `(${createdByMeFiltered.length})`}
-              </TabsTrigger>
-              <TabsTrigger value="mentioned">
-                {t('issues.mentionedIn')}{' '}
-                {mentionedInFiltered.length > 0 && `(${mentionedInFiltered.length})`}
+        {selectedIssue ? (
+          <div className="flex-1 overflow-y-auto">
+            {renderDetailView()}
+          </div>
+        ) : isCreating && showSetId ? (
+          <div className="flex-1 overflow-y-auto">
+            <CreateIssueForm
+              showSetId={showSetId}
+              onClose={() => setIsCreating(false)}
+            />
+          </div>
+        ) : (
+          <Tabs
+            value={activeTab}
+            onValueChange={(v: string) => setActiveTab(v as TabValue)}
+            className="flex-1 flex flex-col min-h-0"
+          >
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="open">
+                {t('issues.open')} ({openIssues.length})
               </TabsTrigger>
               <TabsTrigger value="closed">
-                {t('issues.closed')}{' '}
-                {closedIssues.length > 0 && `(${closedIssues.length})`}
+                {t('issues.closed')} ({closedIssues.length})
               </TabsTrigger>
             </TabsList>
-          )}
 
-          {showSetId && (
-            <TabsContent value="showset" className="flex-1 overflow-y-auto mt-4">
-              {selectedIssue ? (
-                renderDetailView()
+            <TabsContent value="open" className="flex-1 overflow-y-auto mt-2">
+              {isLoading ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  {t('common.loading')}
+                </div>
               ) : (
-                <IssueListView showSetId={showSetId} onSelectIssue={handleSelectIssue} />
+                renderIssueList(openIssues, t('issues.noOpenIssues'))
               )}
             </TabsContent>
-          )}
 
-          <TabsContent value="created" className="flex-1 overflow-y-auto mt-4">
-            {renderIssueList(createdByMeFiltered, t('issues.noIssues'))}
-          </TabsContent>
-
-          <TabsContent value="mentioned" className="flex-1 overflow-y-auto mt-4">
-            {renderIssueList(mentionedInFiltered, t('issues.noIssues'))}
-          </TabsContent>
-
-          <TabsContent value="closed" className="flex-1 overflow-y-auto mt-4">
-            {renderIssueList(closedIssues, t('issues.noClosedIssues'))}
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="closed" className="flex-1 overflow-y-auto mt-2">
+              {isLoading ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  {t('common.loading')}
+                </div>
+              ) : (
+                renderIssueList(closedIssues, t('issues.noClosedIssues'))
+              )}
+            </TabsContent>
+          </Tabs>
+        )}
       </DialogContent>
     </Dialog>
   );

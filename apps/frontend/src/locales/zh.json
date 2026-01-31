@@ -115,8 +115,11 @@
     "mentionedIn": "提及我的",
     "createIssue": "创建问题",
     "noIssues": "暂无问题",
+    "noOpenIssues": "没有未解决的问题",
+    "noClosedIssues": "没有已关闭的问题",
     "noReplies": "暂无回复",
-    "replies": "{{count}} 条回复",
+    "replies_one": "{{count}} 条回复",
+    "replies_other": "{{count}} 条回复",
     "reply": "回复",
     "addReply": "添加回复",
     "viewAll": "查看全部",
@@ -129,6 +132,7 @@
     "filterClosed": "只显示已关闭",
     "filterAll": "显示全部",
     "mentionUser": "使用 @ 提及用户",
+    "pasteScreenshot": "使用 Ctrl+V 粘贴截图",
     "translating": "翻译中...",
     "translationFailed": "翻译失败",
     "attachFile": "附加文件",
@@ -139,7 +143,15 @@
     "showSetIssues": "{{id}} 的问题",
     "backToList": "返回列表",
     "openIssues": "{{count}} 个未解决",
-    "viewIssues": "查看问题"
+    "viewIssues": "查看问题",
+    "markClosed": "标记关闭",
+    "closePromptTitle": "关闭此问题？",
+    "closePromptDescription": "添加评论说明此问题是如何解决的。",
+    "closingCommentPlaceholder": "描述此问题是如何解决的...",
+    "keepOpen": "保持开放",
+    "closeIssue": "关闭问题",
+    "closeError": "关闭问题失败",
+    "reopenError": "重新打开问题失败"
   },
   "sessions": {
     "title": "活动会话",
@@ -239,6 +251,12 @@
   },
   "testing": {
     "roleSwitcher": "测试角色"
+  },
+  "notifications": {
+    "newReplies": "回复",
+    "tagged": "提及",
+    "noNewReplies": "没有新回复",
+    "noTagged": "没有提及您的问题"
   },
   "approval": {
     "title": "审核阶段",

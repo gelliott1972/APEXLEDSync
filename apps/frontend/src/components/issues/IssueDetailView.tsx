@@ -12,9 +12,10 @@ import { CloseIssueDialog } from './CloseIssueDialog';
 interface IssueDetailViewProps {
   issueId: string;
   showSetId: string;
+  onIssueClosed?: () => void;
 }
 
-export function IssueDetailView({ issueId, showSetId }: IssueDetailViewProps) {
+export function IssueDetailView({ issueId, showSetId, onIssueClosed }: IssueDetailViewProps) {
   const { t } = useTranslation();
   const { user, effectiveRole } = useAuthStore();
   const queryClient = useQueryClient();
@@ -41,12 +42,14 @@ export function IssueDetailView({ issueId, showSetId }: IssueDetailViewProps) {
 
   // Close issue mutation
   const closeIssueMutation = useMutation({
-    mutationFn: () => issuesApi.close(issueId, showSetId),
+    mutationFn: (comment: string) => issuesApi.close(issueId, showSetId, comment),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['issue', issueId, showSetId] });
       queryClient.invalidateQueries({ queryKey: ['my-issues'] });
       queryClient.invalidateQueries({ queryKey: ['issues', showSetId] });
       setShowCloseDialog(false);
+      // Notify parent to close the modal
+      onIssueClosed?.();
     },
   });
 
@@ -82,20 +85,21 @@ export function IssueDetailView({ issueId, showSetId }: IssueDetailViewProps) {
 
   const { issue, replies } = data;
 
-  const handleCloseIssue = () => {
-    closeIssueMutation.mutate();
+  const handleCloseIssue = (comment: string) => {
+    closeIssueMutation.mutate(comment);
   };
 
   return (
     <div className="space-y-4">
       {/* Main issue */}
-      <IssueItem issue={issue} showSetId={showSetId} />
+      <IssueItem issue={issue} showSetId={showSetId} hideStatus />
 
       {/* Close Issue Dialog */}
       <CloseIssueDialog
         open={showCloseDialog}
         onClose={() => setShowCloseDialog(false)}
         onConfirm={handleCloseIssue}
+        isLoading={closeIssueMutation.isPending}
       />
 
       {/* Replies section */}
@@ -125,7 +129,7 @@ export function IssueDetailView({ issueId, showSetId }: IssueDetailViewProps) {
         {replies.length > 0 && (
           <div className="space-y-2">
             {replies.map((reply) => (
-              <IssueItem key={reply.issueId} issue={reply} showSetId={showSetId} />
+              <IssueItem key={reply.issueId} issue={reply} showSetId={showSetId} hideStatus />
             ))}
           </div>
         )}

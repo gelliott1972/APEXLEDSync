@@ -115,8 +115,11 @@
     "mentionedIn": "Mentioned In",
     "createIssue": "Create Issue",
     "noIssues": "No issues yet",
+    "noOpenIssues": "No open issues",
+    "noClosedIssues": "No closed issues",
     "noReplies": "No replies yet",
-    "replies": "{{count}} replies",
+    "replies_one": "{{count}} reply",
+    "replies_other": "{{count}} replies",
     "reply": "Reply",
     "addReply": "Add Reply",
     "viewAll": "View All",
@@ -129,6 +132,7 @@
     "filterClosed": "Show closed only",
     "filterAll": "Show all",
     "mentionUser": "Mention user with @",
+    "pasteScreenshot": "Paste screenshots with Ctrl+V",
     "translating": "Translating...",
     "translationFailed": "Translation failed",
     "attachFile": "Attach File",
@@ -139,7 +143,15 @@
     "showSetIssues": "Issues for {{id}}",
     "backToList": "Back to list",
     "openIssues": "{{count}} open",
-    "viewIssues": "View Issues"
+    "viewIssues": "View Issues",
+    "markClosed": "Mark Closed",
+    "closePromptTitle": "Close this issue?",
+    "closePromptDescription": "Add a comment explaining how this issue was resolved.",
+    "closingCommentPlaceholder": "Describe how this issue was resolved...",
+    "keepOpen": "Keep Open",
+    "closeIssue": "Close Issue",
+    "closeError": "Failed to close issue",
+    "reopenError": "Failed to reopen issue"
   },
   "sessions": {
     "title": "Active Sessions",
@@ -239,6 +251,12 @@
   },
   "testing": {
     "roleSwitcher": "Test Roles"
+  },
+  "notifications": {
+    "newReplies": "Replies",
+    "tagged": "Tagged",
+    "noNewReplies": "No new replies",
+    "noTagged": "No issues you're tagged in"
   },
   "approval": {
     "title": "Review Stages",
