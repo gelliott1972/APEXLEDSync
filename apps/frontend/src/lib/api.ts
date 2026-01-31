@@ -257,9 +257,10 @@ export const issuesApi = {
       method: 'DELETE',
     }),
 
-  close: (issueId: string, showSetId: string) =>
+  close: (issueId: string, showSetId: string, comment: string) =>
     request<void>(`/issues/${issueId}/close?showSetId=${showSetId}`, {
       method: 'POST',
+      body: JSON.stringify({ comment }),
     }),
 
   reopen: (issueId: string, showSetId: string) =>
@@ -386,9 +387,12 @@ export const activityApi = {
     request<Activity[]>(`/activity/recent?limit=${limit}&days=${days}`),
 };
 
-// Users API (Admin only)
+// Users API (Admin only, except for-mention)
 export const usersApi = {
   list: () => request<User[]>('/users'),
+
+  // List users for @mention autocomplete (available to all authenticated users)
+  listForMention: () => request<{ userId: string; name: string }[]>('/users/for-mention'),
 
   get: (userId: string) => request<User>(`/users/${userId}`),
 

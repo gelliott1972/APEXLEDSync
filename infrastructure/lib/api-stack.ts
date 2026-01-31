@@ -124,6 +124,15 @@ export class ApiStack extends cdk.Stack {
     }
     props.attachmentsBucket.grantReadWrite(issuesHandler);
 
+    // Grant permission to query manually-created GSIs on notes table
+    issuesHandler.addToRolePolicy(new cdk.aws_iam.PolicyStatement({
+      actions: ['dynamodb:Query'],
+      resources: [
+        `${props.notesTable.tableArn}/index/GSI1-author-index`,
+        `${props.notesTable.tableArn}/index/GSI2-mention-index`,
+      ],
+    }));
+
     // Sessions handler
     const sessionsHandler = createHandler('Sessions', 'sessions');
 
@@ -332,10 +341,14 @@ export class ApiStack extends cdk.Stack {
     const translate = this.api.root.addResource('translate');
     translate.addMethod('POST', translateApiIntegration, authOptions);
 
-    // Users endpoints (Admin only)
+    // Users endpoints (Admin only, except for-mention)
     const users = this.api.root.addResource('users');
     users.addMethod('GET', usersIntegration, authOptions);
     users.addMethod('POST', usersIntegration, authOptions);
+
+    // Users for @mention autocomplete (all authenticated users)
+    const usersForMention = users.addResource('for-mention');
+    usersForMention.addMethod('GET', usersIntegration, authOptions);
 
     const userById = users.addResource('{userId}');
     userById.addMethod('GET', usersIntegration, authOptions);

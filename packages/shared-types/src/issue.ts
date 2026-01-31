@@ -27,6 +27,7 @@ export interface Issue {
   closedAt?: string;
   closedBy?: string;
   closedByName?: string;
+  closingComment?: string;
   // Mentions
   mentions: IssueMention[];
   // Participants and read tracking

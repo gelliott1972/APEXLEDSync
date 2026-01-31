@@ -94,6 +94,31 @@ const listUsers: AuthenticatedHandler = async (_event, auth) => {
   }
 };
 
+// List users for @mention autocomplete (available to all authenticated users)
+const listUsersForMention: AuthenticatedHandler = async () => {
+  try {
+    const result = await docClient.send(
+      new ScanCommand({
+        TableName: TABLE_NAMES.USERS,
+        FilterExpression: 'begins_with(PK, :prefix)',
+        ExpressionAttributeValues: {
+          ':prefix': 'USER#',
+        },
+        ProjectionExpression: 'userId, #n',
+        ExpressionAttributeNames: {
+          '#n': 'name',
+        },
+      })
+    );
+
+    // Return only userId and name for privacy
+    return success((result.Items ?? []).map(u => ({ userId: u.userId, name: u.name })));
+  } catch (err) {
+    console.error('Error listing users for mention:', err);
+    return internalError();
+  }
+};
+
 const getUser: AuthenticatedHandler = async (event, auth) => {
   try {
     if (!canManageUsers(auth.role)) {
@@ -499,6 +524,8 @@ export const handler = async (
   switch (`${method} ${resource}`) {
     case 'GET /users':
       return await wrappedHandler(listUsers);
+    case 'GET /users/for-mention':
+      return await wrappedHandler(listUsersForMention);
     case 'GET /users/{userId}':
       return await wrappedHandler(getUser);
     case 'POST /users':

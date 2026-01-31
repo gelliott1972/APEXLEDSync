@@ -31,6 +31,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { IssueStatusBadge } from './IssueStatusBadge';
+import { CloseIssueDialog } from './CloseIssueDialog';
 
 // Normalize language to our supported types
 function normalizeLanguage(lang: string): Language {
@@ -352,15 +353,17 @@ interface IssueItemProps {
   isCompact?: boolean;
   showShowSetId?: boolean; // Show the ShowSet ID in the item (for "My Issues" view)
   isUnread?: boolean; // Show unread indicator
+  hideStatus?: boolean; // Hide the status badge (for detail view)
 }
 
-export function IssueItem({ issue, showSetId, onClick, isCompact = false, showShowSetId = false, isUnread = false }: IssueItemProps) {
+export function IssueItem({ issue, showSetId, onClick, isCompact = false, showShowSetId = false, isUnread = false, hideStatus = false }: IssueItemProps) {
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const { user, effectiveRole } = useAuthStore();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [showCloseDialog, setShowCloseDialog] = useState(false);
 
   const lang = i18n.language as Language;
   const content = issue.content[lang] || issue.content[issue.originalLang];
@@ -380,10 +383,13 @@ export function IssueItem({ issue, showSetId, onClick, isCompact = false, showSh
   });
 
   const closeMutation = useMutation({
-    mutationFn: () => issuesApi.close(issue.issueId, showSetId),
+    mutationFn: (comment: string) => issuesApi.close(issue.issueId, showSetId, comment),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['issues', showSetId] });
+      queryClient.invalidateQueries({ queryKey: ['issue', issue.issueId, showSetId] });
       queryClient.invalidateQueries({ queryKey: ['my-issues'] });
+      queryClient.invalidateQueries({ queryKey: ['closed-issues'] });
+      setShowCloseDialog(false);
     },
     onError: (error: Error) => {
       console.error('Close issue error:', error);
@@ -399,7 +405,9 @@ export function IssueItem({ issue, showSetId, onClick, isCompact = false, showSh
     mutationFn: () => issuesApi.reopen(issue.issueId, showSetId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['issues', showSetId] });
+      queryClient.invalidateQueries({ queryKey: ['issue', issue.issueId, showSetId] });
       queryClient.invalidateQueries({ queryKey: ['my-issues'] });
+      queryClient.invalidateQueries({ queryKey: ['closed-issues'] });
     },
     onError: (error: Error) => {
       console.error('Reopen issue error:', error);
@@ -468,7 +476,7 @@ export function IssueItem({ issue, showSetId, onClick, isCompact = false, showSh
                 isLoading={closeMutation.isPending || reopenMutation.isPending}
                 onClick={() => {
                   if (issue.status === 'open') {
-                    closeMutation.mutate();
+                    setShowCloseDialog(true);
                   } else {
                     reopenMutation.mutate();
                   }
@@ -514,18 +522,20 @@ export function IssueItem({ issue, showSetId, onClick, isCompact = false, showSh
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <IssueStatusBadge
-            status={issue.status}
-            canClose={canClose}
-            isLoading={closeMutation.isPending || reopenMutation.isPending}
-            onClick={() => {
-              if (issue.status === 'open') {
-                closeMutation.mutate();
-              } else {
-                reopenMutation.mutate();
-              }
-            }}
-          />
+          {!hideStatus && (
+            <IssueStatusBadge
+              status={issue.status}
+              canClose={canClose}
+              isLoading={closeMutation.isPending || reopenMutation.isPending}
+              onClick={() => {
+                if (issue.status === 'open') {
+                  setShowCloseDialog(true);
+                } else {
+                  reopenMutation.mutate();
+                }
+              }}
+            />
+          )}
           {isRevision && <AlertTriangle className="h-3 w-3 text-amber-500" />}
           <p className="text-xs text-muted-foreground">
             {time} · {issue.authorName}
@@ -597,9 +607,17 @@ export function IssueItem({ issue, showSetId, onClick, isCompact = false, showSh
 
       {/* Closed info */}
       {issue.status === 'closed' && issue.closedByName && (
-        <p className="text-xs text-muted-foreground">
-          {t('issues.closedBy', { name: issue.closedByName })}
-        </p>
+        <div className="text-xs text-muted-foreground space-y-1">
+          <p>
+            {t('issues.closedBy', { name: issue.closedByName })}
+            {issue.closedAt && (
+              <span> · {new Date(issue.closedAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
+            )}
+          </p>
+          {issue.closingComment && (
+            <p className="italic">{issue.closingComment}</p>
+          )}
+        </div>
       )}
 
       {/* Attachments */}
@@ -620,6 +638,14 @@ export function IssueItem({ issue, showSetId, onClick, isCompact = false, showSh
       {isUploading && (
         <div className="text-xs text-muted-foreground animate-pulse">{t('issues.uploading')}</div>
       )}
+
+      {/* Close Issue Dialog */}
+      <CloseIssueDialog
+        open={showCloseDialog}
+        onClose={() => setShowCloseDialog(false)}
+        onConfirm={(comment) => closeMutation.mutate(comment)}
+        isLoading={closeMutation.isPending}
+      />
     </div>
   );
 }

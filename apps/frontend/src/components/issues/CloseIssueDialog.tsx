@@ -1,42 +1,64 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 
 interface CloseIssueDialogProps {
   open: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: (comment: string) => void;
+  isLoading?: boolean;
 }
 
-export function CloseIssueDialog({ open, onClose, onConfirm }: CloseIssueDialogProps) {
+export function CloseIssueDialog({ open, onClose, onConfirm, isLoading }: CloseIssueDialogProps) {
   const { t } = useTranslation();
+  const [comment, setComment] = useState('');
+
+  const handleClose = () => {
+    setComment('');
+    onClose();
+  };
+
+  const handleConfirm = () => {
+    if (comment.trim()) {
+      onConfirm(comment.trim());
+    }
+  };
 
   return (
-    <AlertDialog open={open} onOpenChange={(open) => !open && onClose()}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{t('issues.closePromptTitle')}</AlertDialogTitle>
-          <AlertDialogDescription>
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{t('issues.closePromptTitle')}</DialogTitle>
+          <DialogDescription>
             {t('issues.closePromptDescription')}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel onClick={onClose}>
+          </DialogDescription>
+        </DialogHeader>
+        <div className="py-2">
+          <textarea
+            className="w-full min-h-[80px] p-2 text-sm border rounded-md resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+            placeholder={t('issues.closingCommentPlaceholder')}
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            disabled={isLoading}
+          />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={handleClose} disabled={isLoading}>
             {t('issues.keepOpen')}
-          </AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm}>
-            {t('issues.closeIssue')}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+          </Button>
+          <Button onClick={handleConfirm} disabled={!comment.trim() || isLoading}>
+            {isLoading ? t('common.loading') : t('issues.closeIssue')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
