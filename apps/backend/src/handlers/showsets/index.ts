@@ -263,8 +263,8 @@ function migrateShowSetStages(showSet: any): ShowSet {
   const integrated = showSet.stages.integrated;
 
   // Use the more progressed status
-  const structureOrder = statusOrder[structure.status] ?? 0;
-  const integratedOrder = statusOrder[integrated.status] ?? 0;
+  const structureOrder = statusOrder[structure.status as StageStatus] ?? 0;
+  const integratedOrder = statusOrder[integrated.status as StageStatus] ?? 0;
   const moreProgressed = integratedOrder > structureOrder ? integrated : structure;
 
   // Merge: take all fields from the more progressed stage
@@ -642,7 +642,7 @@ const updateStage: AuthenticatedHandler = async (event, auth) => {
       return validationError('ShowSet ID and stage name are required');
     }
 
-    const validStages: StageName[] = ['screen', 'structure', 'integrated', 'inBim360', 'drawing2d'];
+    const validStages: StageName[] = ['screen', 'structure', 'inBim360', 'drawing2d'];
     if (!validStages.includes(stageName)) {
       return validationError('Invalid stage name');
     }
@@ -935,7 +935,7 @@ const updateStage: AuthenticatedHandler = async (event, auth) => {
     };
 
     // Only include assignedTo and version for stages that support them
-    if (['screen', 'structure', 'integrated', 'drawing2d'].includes(stageName)) {
+    if (['screen', 'structure', 'drawing2d'].includes(stageName)) {
       if (assignedTo !== undefined) {
         stageUpdate.assignedTo = assignedTo;
       }
@@ -1342,7 +1342,7 @@ const lockShowSet: AuthenticatedHandler = async (event, auth) => {
 
 // Schema for unlock request body
 const unlockShowSetSchema = z.object({
-  stagesToReset: z.array(z.enum(['screen', 'structure', 'integrated', 'inBim360', 'drawing2d'])).optional(),
+  stagesToReset: z.array(z.enum(['screen', 'structure', 'inBim360', 'drawing2d'])).optional(),
 });
 
 // Unlock a ShowSet (Admin only)

@@ -18,7 +18,7 @@ import {
 } from '../../lib/response.js';
 
 // Schemas
-const stageNameSchema = z.enum(['screen', 'structure', 'integrated', 'inBim360', 'drawing2d']);
+const stageNameSchema = z.enum(['screen', 'structure', 'inBim360', 'drawing2d']);
 
 const startSessionSchema = z.object({
   showSetId: z.string().optional(),

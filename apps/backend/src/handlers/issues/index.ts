@@ -138,6 +138,9 @@ function noteToIssue(note: Note & { PK: string; SK: string }): Issue & { PK: str
     replyCount: 0,
     status: 'open',
     mentions: [],
+    participants: [note.authorId],
+    unreadFor: [],
+    lastReadBy: {},
   };
 }
 
@@ -502,7 +505,6 @@ const markIssueRead: AuthenticatedHandler = async (event, auth) => {
     const timestamp = now();
     const currentUnreadFor = issue.unreadFor ?? [];
     const newUnreadFor = currentUnreadFor.filter(userId => userId !== auth.userId);
-    const currentLastReadBy = issue.lastReadBy ?? {};
 
     await docClient.send(
       new UpdateCommand({
